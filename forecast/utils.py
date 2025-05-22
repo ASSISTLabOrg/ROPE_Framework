@@ -8,9 +8,17 @@ Email: violet.player@noaa.gov
 #===================================== Imports =====================================#
 
 import numpy as np
-from models.states import _array_like
+from typing import Union
+from types import FunctionType as ftype
+
+#### convencience
+_array_like = Union[np.ndarray, list, tuple]
 
 #===================================== Methods =====================================#
+
+def vprint(statement, verbose=False):
+    if verbose:
+        print(statement)
 
 def interpolate_matrix(x : _array_like,
                        xp : _array_like, 

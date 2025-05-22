@@ -15,3 +15,5 @@ Contains the data needed to run forecaster models. Temporary - these data will e
 Contains notebooks for testing and developing new models.
 ### _scripts/
 Contains scripts for testing and developing new models.
+### _tie_gcm_*
+Contains testing models.

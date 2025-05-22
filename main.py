@@ -5,9 +5,9 @@ Contact: Violet Player
 Email: violet.player@colorado.edu
 """
 import asyncio
+import json
 from concurrent.futures import ProcessPoolExecutor as Pool
-from json import load
-from models.forecast import build_forecaster
+from forecast import driver
 
 async def handle_client(reader, writer, executor):
     
@@ -16,15 +16,19 @@ async def handle_client(reader, writer, executor):
         
     while True:
 
-        data = await reader.read(100)
-        if not data:
+        #### read user input
+        input = await reader.read(100)
+        if not input:
             break
+
+        #### Build iterable of tasks from data
+        tasks = driver.build_tasks(input)
         
-        # Offload CPU-bound task to a separate process
+        ##### Offload CPU-bound task to a separate process
         result = await asyncio.get_event_loop().run_in_executor(
             executor,
-            process_data,
-            data
+            driver.run,
+            tasks,
         )
         
         writer.write(result)
@@ -33,16 +37,17 @@ async def handle_client(reader, writer, executor):
     print(f"Close the connection from {addr!r}")
     writer.close()
 
-def process_data(data):
-    return b"Processed: " + data
 
 async def main(settings_file):
 
+    #### initial file load
+    settings = json.load(
+        settings_file
+    )
+
     #### set up forecaster 
-    forecaster = build_forecaster(
-        load(
-            settings_file
-        )
+    model = driver.build_model(
+        settings["model"]
     )
     
     #### initialize multiprocessing pool
@@ -66,15 +71,12 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
 
-    #-db DATABASE -u USERNAME -p PASSWORD -size 20
+    #-s SETTINGS FIILE
     parser.add_argument("-s", "--settings", help="Settings file")
-    #parser.add_argument("-db", "--hostname", help="Database name")
-    #parser.add_argument("-u", "--username", help="User name")
-    #parser.add_argument("-p", "--password", help="Password")
-    #parser.add_argument("-size", "--size", help="Size", type=int)
     args = parser.parse_args()
     
-    asyncio.run(main(
-        args.settings
+    asyncio.run(
+        main(
+            args.settings
         )
     )
