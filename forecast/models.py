@@ -1,9 +1,23 @@
 #### generic python
 import numpy as np
 import fnmatch
-
-#### module imports
+from json import load
+from typing import Union
 import utils
+from manager import Task
+
+def build_model(settings):
+
+    #### load the model variables
+    model_vars = load(
+        settings["input_file"]
+    )
+
+    if settings["model_type"].lower() is "sindyc":
+        return SINDYc(**model_vars)
+    
+    else:
+        raise Exception("Model type not supported. Currently supports: [SINDYc, ]")
 
 class SINDYc:
     """
@@ -17,60 +31,80 @@ class SINDYc:
         time_step : time step of runge-kutta method
 
     Methods :
-        forecast
+        forecast : accepts a Task and forecasts the result in reduced-space from that task
     """
 
     def __init__(self, **kwargs):
+
         __dict__.update(**kwargs)
+        
+        #### make sure all the necessary variables are in place
+        if not self._init_check():
+            raise Exception("SINDYc model not properly inialized.")
 
     def forecast(self,
-                 job : utils.JobState) -> np.ndarray:
+                 task : Task) -> np.ndarray:
 
         #### interpolate drivers to half-step times
         drivers_itp = self._interpolate_drivers(
-            job.parameters["solver_times_half"], 
-            job.parameters["driver_times"], 
-            job.parameters["drivers"]
+            task.parameters["solver_times_half"], 
+            task.parameters["driver_times"], 
+            task.drivers,
         )
 
         #### set up RKO4 solver and solution container
         fcst = np.zeros(
             (
-                len(job.parameters["solver_times_full"]),
-                job.initial_state.size
+                len(task.parameters["solver_times_full"]),
+                task.initial_state.size
             )
         )
-        fcst[0,:] = job.initial_state
+        fcst[0,:] = task.initial_state
         
         #### Forecast!
-        for i in range(1, len(job.parameters["solver_times_full"])):
+        for i in range(1, len(task.parameters["solver_times_full"])):
 
             Xi = self._get_coeffs_SINDYc(
-                job.drivers[i,self.kp_index]
+                task.drivers[i,self.kp_index]
             )
 
             fcst[i,:] = self._RKO4_step(
                 self._ODE_function, 
                 fcst[i-1,:].reshape((-1,1)),
-                job.parameters["solver_times_full"][i],
+                task.parameters["solver_times_full"][i],
                 self.time_step,
-                *[job.parameters["solver_times_half"], 
+                *[task.parameters["solver_times_half"], 
                   drivers_itp, 
                   Xi
                   ]
             ).squeeze()
             
-        if job.parameters["forecast_times"] is not None:
+        if task.parameters["forecast_times"] is not None:
             fcst = utils.interpolate_matrix(
-                job.parameters["forecast_times"], 
-                job.parameters["solver_times_full"], 
+                task.parameters["forecast_times"], 
+                task.parameters["solver_times_full"], 
                 fcst, 
                 self.interp_method, 
                 axis=0
             )
 
         return fcst
-       
+
+    def _init_check(self):
+        """
+        Checks all expected variables in the SINDYc model setup.
+        """
+        loaded_attrs = [key for key in __dict__.keys()]
+        check_attrs = ["Xi", "feature_library", "feature_names", "kp_index", "f10_index", "interp_method", "time_step"]
+
+        check = True
+        for key in check_attrs:
+            if key not in loaded_attrs:
+                check = False
+                break
+
+        return check
+    
     def _ODE_function(self,
                       t : float,
                       y : np.ndarray,
@@ -263,3 +297,5 @@ class SINDYc:
             *args
         )
         return y0 + (h / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
+    
+_modeltype = Union[SINDYc]

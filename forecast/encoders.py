@@ -8,7 +8,16 @@ Email: violet.player@noaa.gov
 
 import numpy as np
 import utils
+from typing import Union
 from sklearn.decomposition import PCA as skPCA
+
+def build_encoder(settings):
+
+    if settings["encoder_type"].lower() is "pca":
+        return PCA(**settings)
+    
+    else:
+        raise Exception("Model type not supported. Currently supports: [PCA, ]")
 
 #===================================== Principal Component Analysis =====================================#
 
@@ -17,7 +26,30 @@ class PCA:
     def __init__(self, **kwargs):
         __dict__.update(**kwargs)
 
-    def get_singular_vectors(snapshot):
+    def encode(self):
+        return None
+
+    def decode(self, 
+               X : np.ndarray,
+               Y : np.ndarray, 
+               full=False):
+
+        if not full:
+            return self.interpolate(X, Y)
+        
+        else:
+            ### inverse PCA transformation 
+            Xp = np.squeeze(
+                np.matmul(
+                    Y.reshape((1,-1)), 
+                    self.pca.components_
+                )
+            )
+
+            #### inverse scaling transformation in the reduced index space
+            return self.scaler.mean_ + self.scaler.scale_ * Xp
+        
+    def get_singular_vectors(self, snapshot):
         return None
 
     def interpolate(self,
@@ -42,13 +74,21 @@ class PCA:
         """
 
         #### query the tree for best indices
-        d, indices = self.tree.query(xn, k=k)
+        d, indices = self.tree.query(
+            xn, 
+            k=k
+        )
         
         #### if requested point is on grid, no interpolation is required
         if d[0] == 0:
 
             #### inverse PCA transformation in the reduced index space
-            Xp = np.squeeze(np.matmul(y.reshape((1,-1)), self.pca.components_[:,indices[0]]))
+            Xp = np.squeeze(
+                np.matmul(
+                    y.reshape((1,-1)), 
+                    self.pca.components_[:,indices[0]]
+                )
+            )
 
             #### inverse scaling transformation in the reduced index space
             #### and this is the final result
@@ -57,7 +97,12 @@ class PCA:
         else:
 
             #### inverse PCA transformation in the reduced index space
-            Xp = np.squeeze(np.matmul(y.reshape((1,-1)), self.pca.components_[:,indices]))
+            Xp = np.squeeze(
+                np.matmul(
+                    y.reshape((1,-1)), 
+                    self.pca.components_[:,indices]
+                )
+            )
 
             #### inverse scaling transformation in the reduced index space
             X = self.scaler.mean_[indices] + self.scaler.scale_[indices] * Xp
@@ -70,3 +115,5 @@ class PCA:
                 raise Exception("Only supports the following interpolation methods: [knn]")
             
         return X_itp
+    
+_encodertype = Union[PCA]

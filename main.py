@@ -7,7 +7,8 @@ Email: violet.player@colorado.edu
 import asyncio
 import json
 from concurrent.futures import ProcessPoolExecutor as Pool
-from forecast import driver
+from forecast.manager import make_tasks, run
+from forecast.models import build_model
 
 async def handle_client(reader, writer, executor):
     
@@ -17,17 +18,17 @@ async def handle_client(reader, writer, executor):
     while True:
 
         #### read user input
-        input = await reader.read(100)
+        input = await reader.read(1024)
         if not input:
             break
 
         #### Build iterable of tasks from data
-        tasks = driver.build_tasks(input)
+        tasks = make_tasks(input)
         
         ##### Offload CPU-bound task to a separate process
         result = await asyncio.get_event_loop().run_in_executor(
             executor,
-            driver.run,
+            run,
             tasks,
         )
         
@@ -46,7 +47,7 @@ async def main(settings_file):
     )
 
     #### set up forecaster 
-    model = driver.build_model(
+    model = build_model(
         settings["model"]
     )
     
@@ -58,8 +59,8 @@ async def main(settings_file):
     #### open server; anonymous client function to add args
     server = await asyncio.start_server(
         lambda x, y : handle_client(x, y, pool), 
-        '127.0.0.1', 
-        8888
+        settings["server"]["address"], #'127.0.0.1', 
+        settings["server"]["port"] #8888
     )
 
     async with server:
