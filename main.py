@@ -1,35 +1,79 @@
 """
-Main file.
+Main file. Launches server and handles client connections.
 
 Contact: Violet Player
 Email: violet.player@colorado.edu
 """
 import asyncio
-import json
+import pickle as pkl
 from concurrent.futures import ProcessPoolExecutor as Pool
-from forecast.manager import make_tasks, run
-from forecast.models import build_model
+from pyrope.utils import Task, job_factory, read_config, ArrayLikeType
+from pyrope.models import model_factory, ModelType
+from pyrope.transformers import transformer_factory, TransformerType
 
-async def handle_client(reader, writer, executor):
+def intializer(config):
+    #### will probably need to do something
+    pass
+
+def run(task : Task, 
+        model : ModelType,
+        transformer : TransformerType):
+    
+    #### forecast in reduced space, rho(t)
+    fcst = model.forecast(
+        task
+    )
+
+    #### transform + interpolate forecast
+    result = transformer.expand(
+        task.Trajectory,
+        fcst,
+        full=False
+    )
+
+    return result
+
+async def handle_client(reader, 
+                        writer, 
+                        **kwargs):
     
     addr = writer.get_extra_info('peername')
     print(f"Connection from {addr!r}")
         
     while True:
 
-        #### read user input
-        input = await reader.read(1024)
+        #### Read user input
+        input = await reader.read(4096)
         if not input:
             break
 
-        #### Build iterable of tasks from data
-        tasks = make_tasks(input)
+        #### Unpickle data
+        try:
+            data = pkl.loads(
+                input
+            )
+        except:
+            raise Exception("Data must be unpickle-able.")
+
+        #### quick fix for singleton Trajectory inputs
+        if type(data) != ArrayLikeType:
+            data = [data]
+
+        #### Build iterable of tasks (or a "job") from recieved Trajectories
+        job = job_factory(
+            kwargs["config"],
+            *data
+        )
         
-        ##### Offload CPU-bound task to a separate process
+        ##### Offload CPU-bound task to the pool
         result = await asyncio.get_event_loop().run_in_executor(
-            executor,
-            run,
-            tasks,
+            kwargs["pool"],
+            lambda task : run(
+                task,
+                kwargs["model"],
+                kwargs["transformer"]
+            ),
+            job,
         )
         
         writer.write(result)
@@ -38,29 +82,38 @@ async def handle_client(reader, writer, executor):
     print(f"Close the connection from {addr!r}")
     writer.close()
 
+async def main(config):
 
-async def main(settings_file):
-
-    #### initial file load
-    settings = json.load(
-        settings_file
+    #### build model & transformer
+    global model, transformer
+    model = model_factory(
+        config
     )
-
-    #### set up forecaster 
-    model = build_model(
-        settings["model"]
+    transformer = transformer_factory(
+        config
     )
     
     #### initialize multiprocessing pool
     pool = Pool(
-        mp_context="forkserver" # forks retain parent process variables
+        max_workers=int(config["pool"]["max_workers"]),
+        mp_context=config["pool"]["mp_context"],
+        initializer=intializer,
+        initargs=config,
     )
 
     #### open server; anonymous client function to add args
     server = await asyncio.start_server(
-        lambda x, y : handle_client(x, y, pool), 
-        settings["server"]["address"], #'127.0.0.1', 
-        settings["server"]["port"] #8888
+        lambda x, y : handle_client(
+            x, y,
+            {
+                "pool": pool,
+                "model": model,
+                "transformer": transformer,
+                "config": config,
+            }
+        ),
+        config["server"]["address"],
+        int(config["server"]["port"])
     )
 
     async with server:
@@ -69,15 +122,19 @@ async def main(settings_file):
 
 if __name__ == "__main__":
 
-    import argparse
-    parser = argparse.ArgumentParser()
+    #### first, parse CLI arguments
+    from argparse import ArgumentParser
+    parser = ArgumentParser()
 
-    #-s SETTINGS FIILE
-    parser.add_argument("-s", "--settings", help="Settings file")
+    #-c CONFIGURATION FILE
+    parser.add_argument("-c", "--config", help="Configuration file")
     args = parser.parse_args()
-    
+
+    #### then launch server
     asyncio.run(
         main(
-            args.settings
+            read_config(
+                args.config
+            )
         )
     )

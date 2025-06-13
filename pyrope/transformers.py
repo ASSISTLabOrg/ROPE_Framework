@@ -1,4 +1,5 @@
 """
+Contains transformation objects for reducing and expanding state space.
 
 Contact: Violet Player
 Email: violet.player@noaa.gov
@@ -7,31 +8,73 @@ Email: violet.player@noaa.gov
 #===================================== Imports =====================================#
 
 import numpy as np
-import utils
+import pickle as pkl
 from typing import Union
-from sklearn.decomposition import PCA as skPCA
-
-def build_encoder(settings):
-
-    if settings["encoder_type"].lower() is "pca":
-        return PCA(**settings)
-    
-    else:
-        raise Exception("Model type not supported. Currently supports: [PCA, ]")
+import utils
+from sklearn.decomposition import PCA as skdPCA
+from sklearn.preprocessing import StandardScaler
+from scipy.spatial import KDTree
 
 #===================================== Principal Component Analysis =====================================#
 
-class PCA:
+def transformer_factory(config):
+    """
+    Returns the correct transformer type from the ini file.
+
+    """
+
+    #### PCA loads direct from pickle file
+    if config["transformer"]["type"].lower() == "pca":
+    
+        with open(config["transformer"]["file"], "rb") as f:
+            transformer = pkl.load(f)
+
+    #### COAE built from weight file
+    # elif config["type"].lower() == "coae":
+    #     transformer = COAE(**vars)
+    
+    else:
+        raise Exception("Transformer type not supported. Currently supports: [PCA, ]")
+    
+    return transformer
+
+#===================================== Principal Component Analysis =====================================#
+
+class PCA(skdPCA):
 
     def __init__(self, **kwargs):
-        __dict__.update(**kwargs)
 
-    def encode(self):
-        return None
+        super().__init__(n_components=kwargs["n_components"])
+        self.__dict__.update(**kwargs)
+        
+        self.PhysicsGrid = utils.PhysicsGrid(
+            kwargs["physics_grid"]["model"],
+            kwargs["physics_grid"]["ndim"],
+            kwargs["physics_grid"]["dims"]
+        )
+        
+        self.tree = KDTree(
+            np.column_stack(
+                self.PhysicsGrid.dims
+            )
+        )
 
-    def decode(self, 
+        self.scaler = StandardScaler(
+            
+        )
+
+        if not self._init_check():
+            raise Exception("Model initialized incorrectly.")
+        
+    def _init_check(self):
+        return True
+
+    def reduce(self):
+        pass
+
+    def expand(self,
                X : np.ndarray,
-               Y : np.ndarray, 
+               Y : np.ndarray,
                full=False):
 
         if not full:
@@ -42,18 +85,15 @@ class PCA:
             Xp = np.squeeze(
                 np.matmul(
                     Y.reshape((1,-1)), 
-                    self.pca.components_
+                    self.components_
                 )
             )
 
             #### inverse scaling transformation in the reduced index space
             return self.scaler.mean_ + self.scaler.scale_ * Xp
-        
-    def get_singular_vectors(self, snapshot):
-        return None
 
     def interpolate(self,
-                    xn : utils._array_like, 
+                    xn : utils.ArrayLikeType, 
                     y : np.ndarray,
                     method : str = "knn",
                     k : int = 8,
@@ -86,7 +126,7 @@ class PCA:
             Xp = np.squeeze(
                 np.matmul(
                     y.reshape((1,-1)), 
-                    self.pca.components_[:,indices[0]]
+                    self.components_[:,indices[0]]
                 )
             )
 
@@ -100,7 +140,7 @@ class PCA:
             Xp = np.squeeze(
                 np.matmul(
                     y.reshape((1,-1)), 
-                    self.pca.components_[:,indices]
+                    self.components_[:,indices]
                 )
             )
 
@@ -116,4 +156,13 @@ class PCA:
             
         return X_itp
     
-_encodertype = Union[PCA]
+#===================================== Autoencoder =====================================#
+
+class COAE:
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(**kwargs)
+
+#===================================== Convenience Functions & Typing =====================================#
+
+TransformerType = Union[PCA, COAE]
