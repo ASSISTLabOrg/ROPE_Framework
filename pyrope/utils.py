@@ -12,6 +12,7 @@ import h5py
 from typing import Union
 import asyncio
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 #===================================== Typing and Dataclasses =====================================#
 
@@ -21,16 +22,38 @@ ArrayLikeType = Union[np.ndarray, list, tuple]
 NumericType = Union[int, float]
 
 @dataclass
+class PointSet:
+    """
+    Dataclass for a set of point in the atmosphere.
+
+    Attributes:
+        timestamp  : [str] ISO-8601 time stamp, representing t = 0 for the set (YYYY-MM-DDTHH:MM:SS.SSSSSS)
+        time       : [array-like, 1D, positive-valued] time points (minutes)
+        altitude   : [array-like, 1D, len(time)] height (km)
+        longitude  : [array-like, 1D, len(time)] longitude (deg)
+        latitude   : [array-like, 1D, len(time)] latitude (deg)
+        avg_window : ***NOT IN USE*** [numeric] length of rolling averaging window (minutes)
+    """
+
+    timestamp : str
+    time : ArrayLikeType
+    altitude : ArrayLikeType
+    longitude : ArrayLikeType
+    latitude : ArrayLikeType
+    #avg_window : NumericType
+
+@dataclass
 class Trajectory:
     """
     Dataclass wrapping a time-parameterized trajectory in the atmosphere.
 
     Attributes:
-        timestamp : ISO-8601 time stamp representing t = 0 for the trajectory.
-        time : Array-like, time of trajectory - usually starts at 0 [hours], maximum 72 hours.
-        altitude : Array-like, len == len(time) [km]
-        longitude : Array-like, len == len(time)[deg]
-        latitude : Array-like, len == len(time) [deg]
+        timestamp : [str] ISO-8601 time stamp string representing t = 0 for the trajectory (YYYY-MM-DDTHH:MM:SS.SSSSSS)
+        time      : [array-like, 1D] time of trajectory (hours)
+        altitude  : [array-like, 1D, len(time)] height of trajectory (km)
+        longitude : [array-like, 1D, len(time)] longitude of trajectory (deg)
+        latitude  : [array-like, 1D, len(time)] latitude of trajectory (deg)
+        avg_window : ***NOT IN USE*** [numeric] length of rolling averaging window (minutes)
     """
 
     timestamp : str
@@ -46,15 +69,15 @@ class Task:
     Dataclass wrapping the information required to execute a single forecast run.
 
     Attributes:
-        Trajectory : a Trajectory object
-        parameters : contains misc parameters - model dependent!
-        drivers : ndarray of space weather drivers [len(driver_times), len(num_drivers)]
-        driver_times : array-like of driver times [hours]
-        initial_state : array-like of initial state-space of atmosphere in reduced space
+        Trajectory    : [Trajectory] contains trajectory data
+        parameters    : [dict] contains misc parameters - model dependent!
+        drivers       : [ndarray, 2D (len(time), len(number of drivers))] space weather drivers
+        driver_times  : [array-like] driver times (hours)
+        initial_state : [arary-like] initial state-space of atmosphere in reduced space
     """
 
     Trajectory : Trajectory
-    parameters : dict # will generally be model-specific
+    parameters : dict
     drivers : np.ndarray
     driver_times : ArrayLikeType
     initial_state : ArrayLikeType
@@ -65,9 +88,9 @@ class PhysicsGrid:
     Dataclass wrapping the physics grid. Useful for building the KDTree for interpolation.
 
     Attributes:
-        model : string, name of the physics model [TIE-GCM, WAM-IPE, etc.]
-        ndim : number of dimensions in model state-space (almost always 3)
-        dims : array-like (usually list) containing all dimensional axes
+        model : [str] name of the physics model [TIE-GCM, WAM-IPE, etc.]
+        ndim  : [int] number of dimensions in model state-space (almost always 3)
+        dims  : [array-like, list preferred] containing all dimensional axes
     """
 
     model : str
@@ -81,24 +104,24 @@ def job_factory(config : dict,
     """
     Factory method for producing a Job, which can be processed by a multiprocessing pool.
 
-    Arguments :
-        config : The configuration dictionary
-        *trajectories : infinite-length argument for inputting trajectories
+    Arguments:
+        config        : [dict] the configuration dictionary
+        *trajectories : [Trajectory objects] infinite-length argument for inputting trajectories
 
-    Returns :
-        job : An iterable of Task objects
+    Returns:
+        job : [list] set of Task objects
     """
 
     tasks = []
-    for i, traj in trajectories:
-        sw_drivers, sw_times = get_sw_drivers(traj)
+    for trajectory in trajectories:
+        sw_drivers, sw_times = get_sw_drivers(trajectory)
         tasks.append(
             Task(
-                traj,
-                get_params(config, traj),
+                trajectory,
+                get_params(config, trajectory),
                 sw_drivers,
                 sw_times,
-                get_initial_state(traj)
+                get_initial_state(trajectory)
             )
         )
 
@@ -111,28 +134,47 @@ def get_sw_drivers(trajectory : Trajectory) -> np.ndarray:
     Gets the correct space-weather drivers given the timestamp.
 
     Arguments:
-        trajectory : Trajectory object
+        trajectory : [Trajectory] path data
 
     Returns:
-        drv_time : ndarray of shape len(trajectory.time), contains sw driver times
-        drivers : ndarray of shape [len(trajectory.time), num_drivers]
+        times   : [ndarray] contains space weather driver time points
+        drivers : [ndarray, (len(times), number of drivers)] contains space weather drivers
     """
 
-    drv_time = np.array([])
-    drivers = np.array([])
+    #### get timestamps for start and end of trajectory
+    t_0 = datetime.fromisoformat(trajectory.timestamp)
+    t_1 = t_0 + timedelta(seconds=3600 * (trajectory.time[-1] - trajectory.time[0]))
 
-    return drv_time, drivers
+    #### number of day files to open
+    ndays = np.ceil((t_1 - t_0).total_seconds() / (24 * 3600)).astype(int)
+
+    #### Open files and collect data
+    times = []
+    drivers = []
+    for i in range(ndays):
+        t_i = t_0 + timedelta(i)
+        fname = f"SW_drivers_{t_i.isoformat()[:10]}.h5"
+        try:
+            with h5py.File(fname, "r") as file:
+                times += list(timedelta(i).total_seconds() / 60 + np.array(file["time"]))
+                drivers.append(np.array(file["drivers"]))
+        except:
+            raise Exception(f"Cannot open file {fname}")
+    
+    return np.array(times), np.vstack(drivers)
 
 def get_initial_state(trajectory : Trajectory) -> np.ndarray:
     """
     Gets the initial atmosphere state in reduced-space, given the timestamp.
 
     Arguments:
-        trajectory : Trajectory object
+        trajectory : [Trajectory] path data
     
     Returns:
-        state : ndarray, contains the reduced-space state to initialize the model.
+        state : [ndarray] contains the reduced-space state to initialize the model.
     """
+
+    fname = f"state_{trajectory.timestamp[:10]}.h5"
 
     state = np.array([])
 
@@ -144,11 +186,11 @@ def get_params(config : dict,
     Gets the parameters required to run the solver, if any.
 
     Argumnents:
-        config : dictionary containing configuration data
-        trajectory : Trajectory object
+        config     : [dict] configuration data
+        trajectory : [Trajectory] path data
 
     Returns:
-        params : dictionary containing parameters required for model solver
+        params : [dict] parameters required for model solver
     """
 
     params = {}
@@ -189,10 +231,10 @@ def hdf5_to_dict(file : str) -> dict:
     Converts HDF5 file to a dictionary with the same key/value pairs
 
     Arguments:
-        file : string, full path of the file to convert
+        file : [str] full path of the file to convert
 
     Returns:
-        output : constructed dictionary containing all data
+        output : [dict] data from file
     """
 
     #### internal function to add nodes + data ¬to dictionary
@@ -219,15 +261,36 @@ def hdf5_to_dict(file : str) -> dict:
 
     return output
 
+def dict_to_hdf5(data : dict,
+                 file : str):
+    """
+    Converts dictionary to hdf5 file with the same structure
+
+    Arguments:
+        data : [dict] dictionary containing the data to save
+        file : [str] full path of the output file
+    """
+
+    def _build_file(h5_group, data_dict):
+        for key, value in data_dict.items():
+            if isinstance(value, dict):
+                new_group = h5_group.create_group(key)
+                _build_file(new_group, value)
+            else:
+                h5_group.create_dataset(key, data=value)
+
+    with h5py.File(file, 'w') as f:
+        _build_file(f, data)
+
 def read_config(file : str) -> dict:
     """
     Reads .ini files into a dictionary.
 
     Arguments:
-        file : string, full path of the ini file
+        file : [str] full path of the ini file
 
     Returns:
-        config_dict : dictionary containing all config data
+        config_dict : [dict] configuration data
     """
     
     config = ConfigParser()
@@ -274,20 +337,20 @@ def read_file(filename : str,
 def interpolate_matrix(x : ArrayLikeType,
                        xp : ArrayLikeType, 
                        A : np.ndarray, 
-                       method="constant", 
-                       axis=-1) -> np.ndarray:
+                       method : str = "constant",
+                       axis : int = -1) -> np.ndarray:
     """
     Interpolates a 2D matrix along the requested axis
 
     Arguments:
-        x : new axis of interpolation
-        xp : original axis (same units as x)
-        A : 2D array
-        method : str, [constant, linear] interpolation
-        axis : which of two axes to interpolate along?
+        x      : [array-like, 1D] new axis of interpolation
+        xp     : [array-like, 1D] original axis (same units as x)
+        A      : [ndarray, 2D] matrix to interpolate
+        method : [str] interpolation type, one of (constant, linear)
+        axis   : [int] which of two axes to interpolate along?
 
     Returns:
-        A_itp : interpolated matrix, as requested.
+        A_itp : [ndarray, 2D] interpolated matrix, as requested.
     """
 
     ### array-ify
@@ -319,35 +382,34 @@ def _interp_1D(x : ArrayLikeType,
     Wraps multiple 1D interpolation methods.
 
     Arguments:
-        x : array-like of new points to interpolate onto
-        xp : array-like of original points
-        yp : array-like of data, len(xp) == len(yp)
-        method : determines which type of interpolation. Supported: [constant, linear, ]
+        x      : [array-like, 1D] new axis of interpolation
+        xp     : [array-like, 1D] original axis (same units as x)
+        yp     : [array-like, 1D, len(xp)] data to interpolate
+        method : [str] determines which type of interpolation. Supported: constant, linear
 
     Returns:
-        y_itp : data, interpolated onto x
+        y : [array-like, 1D] data interpolated onto x
     """
 
     if method.lower() == "constant":
-        y_itp = np.zeros(len(x))
+        y = np.zeros(len(x))
         for i in range(len(x)):
-            y_itp[i] = yp[np.argmin(np.abs(xp - x[i]))]
+            y[i] = yp[np.argmin(np.abs(xp - x[i]))]
 
     elif method.lower() == "linear":
-        y_itp = np.interp(x, xp, yp)
+        y = np.interp(x, xp, yp)
 
     else:
         raise Exception("Choose a valid interpolation method: [constant, linear, ]")
     
-    return y_itp
+    return y
 
 #===================================== Miscellany ====================================#
 
 def vprint(statement : str, 
-           verbose : bool = False):
+           verbose : bool = True):
     """
     Prints only if verbose.
     """
-    
     if verbose:
         print(statement)

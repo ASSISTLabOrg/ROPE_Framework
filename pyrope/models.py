@@ -6,23 +6,50 @@ Email: violet.player@noaa.gov
 """
 
 #===================================== Imports =====================================#
+import os
+import sys
 import numpy as np
 import pickle as pkl
 import fnmatch
 from typing import Union
 import utils
+from datetime import date
+import h5py
 
-def model_factory(config):
+#### add parent to PYTHONPATH
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+#===================================== Factory Methods =====================================#
+
+def model_factory(config : dict):
     """
-    Returns the correct model type from the ini file. 
+    Returns the correct model type from the ini file.
 
+    Arguments:
+        config : [dict] contains the configuration data for the model
     """
 
-    #### unpickle SINDYc model
+    #### load SINDYc model
     if config["model"]["type"].lower() == "sindyc":
 
-        with open(config["model"]["file"], "rb") as f:
-            model = pkl.load(f)
+        #### unpickle
+        try:
+            with open(config["model"]["file"], "rb") as f:
+                model = pkl.load(f)
+        except:
+            pass
+        else:
+            return model
+
+        #### load raw object from hdf5 file
+        try:
+            model = SINDYc(
+                **utils.hdf5_to_dict(config["model"]["file"])
+                )        
+        except:
+            raise Exception("Model file could not be loaded.")
+        else:
+            return model
     
     # elif config["type"].lower() == "lstm":
     #     return LSTM(**vars)
@@ -121,16 +148,33 @@ class SINDYc:
 
         return check
 
-    def save_model(self, file):
+    def save_model(self, 
+                   pickle=True, 
+                   file=None):
+        """
+        Pickles the model for re-opening.
+
+        Arguments:
+            file : relative path of file from ROPE_Framework [str]; if None, autofills as SINDYc_[year]_[month]_[day].pkl
+
         """
         
-        """
-        with open(file, "wb") as f:
-            pkl.dump(
-                self, 
-                f, 
-                protocol=pkl.HIGHEST_PROTOCOL
+        if file is None:
+            ext = "pkl" * pickle + "h5" * (-1 * pickle)
+            file = os.path.join(
+                "data", 
+                f"SINDYc_{date.today().strftime("%Y_%m_%d")}.{ext}"
             )
+
+        if pickle:
+            with open(file, "wb") as f:
+                pkl.dump(
+                    self, 
+                    f, 
+                    protocol=pkl.HIGHEST_PROTOCOL
+                )
+        else:
+            utils.dict_to_hdf5(self.__dict__, file)
 
     def ODE_function(self,
                      t : float,

@@ -89,9 +89,13 @@ def DensityForecaster():
             )
 
         else:
+            
+            #### build jobs
             job = job_factory(
                 trajectories
             )
+
+            #### compute and collect results 
             result = [
                 self.model.forecast(task) for task in job.tasks
             ]

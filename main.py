@@ -13,11 +13,20 @@ from pyrope.transformers import transformer_factory, TransformerType
 
 def intializer(config):
     #### will probably need to do something
+    #### like connect to a data server or whatever
     pass
 
 def run(task : Task, 
         model : ModelType,
         transformer : TransformerType):
+    """
+    Takes a task object and runs the forecast model.
+
+    Arguments:
+        task        : [Task obj] contains all relevant task data
+        model       : [Model obj] contains methods for running the model
+        transformer : [Transformer obj] contains methods for running the inverse transformer
+    """
     
     #### forecast in reduced space, rho(t)
     fcst = model.forecast(
@@ -97,6 +106,7 @@ async def main(config):
     pool = Pool(
         max_workers=int(config["pool"]["max_workers"]),
         mp_context=config["pool"]["mp_context"],
+        max_tasks_per_child=config["pool"]["max_tasks_per_child"],
         initializer=intializer,
         initargs=config,
     )

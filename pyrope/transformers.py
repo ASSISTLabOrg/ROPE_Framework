@@ -78,9 +78,13 @@ class PCA(skdPCA):
                full=False):
 
         if not full:
-            return self.interpolate(X, Y)
+
+            return self.interpolate(
+                X, Y
+            )
         
         else:
+
             ### inverse PCA transformation 
             Xp = np.squeeze(
                 np.matmul(
@@ -89,7 +93,7 @@ class PCA(skdPCA):
                 )
             )
 
-            #### inverse scaling transformation in the reduced index space
+            #### inverse scaling transformation
             return self.scaler.mean_ + self.scaler.scale_ * Xp
 
     def interpolate(self,
@@ -102,13 +106,13 @@ class PCA(skdPCA):
         Method for interpolated PCA-space data without needing to do the full xform.
 
         Arguments:
-            xn : Array-like of length(dims) point in configuration space to interpolate to
-            y : ndarray of length(components) PCA component amplitude, already at correct time
-            k : number of points to retrieve
-            args : additional arguments for different interpolation methods.
+            xn   : [array-like, 1D] point in configuration space to interpolate to
+            y    : [array-like 1D] PCA component amplitude, already at correct time
+            k    : [int] number of points to retrieve
+            args : additional arguments for different interpolation methods
 
         Returns:
-            Interpolated datum.
+            X_itp : [float] interpolated datum
         
         TODO: currently only supports KNN. Would like to add trilinear, tricubic, whatever...
         """
