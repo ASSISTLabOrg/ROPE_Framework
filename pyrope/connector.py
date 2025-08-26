@@ -6,7 +6,7 @@ Email: violet.player@noaa.gov
 """
 
 import socket
-from utils import vprint
+from pyrope.utils import vprint
 
 class Connector:
     """

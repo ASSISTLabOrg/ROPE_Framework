@@ -10,7 +10,7 @@ Email: violet.player@noaa.gov
 import numpy as np
 import pickle as pkl
 from typing import Union
-import utils
+from pyrope import utils
 from sklearn.decomposition import PCA as skdPCA
 from sklearn.preprocessing import StandardScaler
 from scipy.spatial import KDTree

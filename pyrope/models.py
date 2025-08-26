@@ -12,7 +12,7 @@ import numpy as np
 import pickle as pkl
 import fnmatch
 from typing import Union
-import utils
+from pyrope import utils
 from datetime import date
 import h5py
 
@@ -45,7 +45,7 @@ def model_factory(config : dict):
         try:
             model = SINDYc(
                 **utils.hdf5_to_dict(config["model"]["file"])
-                )        
+                )
         except:
             raise Exception("Model file could not be loaded.")
         else:
@@ -75,7 +75,9 @@ class SINDYc:
         
     """
 
-    def __init__(self, **kwargs):
+    def __init__(
+            self, 
+            **kwargs):
 
         self.__dict__.update(**kwargs)
         

@@ -1,7 +1,7 @@
 """
 Contains the DensityForecaster class - this is a client-side convencience object that manages all the details using the Client.ini file.
 
->>> from ROPE.forecaster import DensityForecaster
+>>> from pyrope.forecaster import DensityForecaster
 >>> df = DensityForecaster()
 >>> trajectory_1 = df.make_trajectory(iso_timestamp, time, altitude, latitude, longitude)
 >>> trajectory_2 = df.make_trajectory(iso_timestamp_2, time_2, altitude_2, latitude_2, longitude_2) # and so on
@@ -13,22 +13,22 @@ Email: violet.player@noaa.gov
 import sys
 import os
 import pickle as pkl
-from connector import Connector
-from utils import Trajectory, ArrayLikeType
-from utils import job_factory, read_config
-from models import model_factory
-from transformers import transformer_factory
+from pyrope.connector import Connector
+from pyrope.utils import Trajectory, ArrayLikeType
+from pyrope.utils import job_factory, read_config
+from pyrope.models import model_factory
+from pyrope.transformers import transformer_factory
 
-def DensityForecaster():
+class DensityForecaster:
 
     def __init__(self, 
-                 config_file="ROPE_Framework/ClientDemo.ini", #TODO: better path handling, client probably connecting from another directory
+                 config_file,
                  verbose=False, 
                  **kwargs):
         
         
         #### load config file
-        sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # TODO: Fix this, terrible practice
+        #sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) # TODO: Fix this, terrible practice
         config = read_config(
             config_file
         )
@@ -40,8 +40,8 @@ def DensityForecaster():
 
         #### connect to remote, if possible
         if self.connect:
-            self.HOST = config["server"]["remote_host"]
-            self.PORT = config["server"]["port"]
+            self.HOST = config["server"]["address"]
+            self.PORT = int(config["server"]["port"])
             self.connection = Connector(self.HOST, self.PORT, self.verbose)
 
         #### otherwise, build local model. Currently runs in serial mode only.
