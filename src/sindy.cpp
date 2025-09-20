@@ -1,103 +1,135 @@
 #include <iostream>
 #include <iomanip>
+#include <fstream>
+#include <string>
 #include <boost/numeric/odeint.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/io.hpp>
-#include <boost/lambda/lambda.hpp>
-#include <boost/lambda/bind.hpp>
+#include <boost/math/special_functions/binomial.hpp>
+#include <nlohmann/json.hpp>
 
 using namespace std;
 using namespace boost::numeric::odeint;
 using namespace boost::numeric::ublas;
-using namespace boost::lambda;
+using json = nlohmann::json;
 
 typedef boost::numeric::ublas::matrix< double > mat;
 typedef boost::numeric::ublas::vector< double > vec;
-typedef boost::numeric::ublas::vector< int > ivec;
-typedef boost::numeric::ublas::zero_matrix< double > zmat;
-typedef boost::numeric::ublas::matrix< int > imat;
+typedef std::vector<std::function<double(vec)>> fvec;
 
-// typedef double (*FunctionLibrary) (vec x);
+struct sindy_configuration {
+    string _id;
+    string model;
+    int index_base;
+    int n_variables;
+    int n_drivers;
+    std::vector<std::vector<double>> coefficients;
+    std::vector<string> library;
+};
 
-// double poly(int i, vec x) { return x(i); }
-// double poly(int i, int j, vec x) { return x(i) * x(j); }
-// double poly(int i, int j, int k, vec x) { return x(i) * x(j) * x(k); }
-
-double poly(vec x, imat lib, int i)
-{
-    switch (lib(i,0))
-    {
-        case 1:
-            return x(lib(i,1));
-        case 2:
-            return x(lib(i,1)) * x(lib(i,2));
-        case 3:
-            return x(lib(i,1)) * x(lib(i,2)) * x(lib(i,3));
-        default:
-            return 0.0;
-    };
-}
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(sindy_configuration, 
+    _id, model, index_base, n_variables, n_drivers, 
+    coefficients, library);
 
 class sindy {
 
-    mat m_xi; // coefficients
-    imat m_lib;
+    const int n; // number of variables
+    const int s; // number of drivers
+    const int m; // number of models
+    const mat xi; // coefficient matrix
+    const fvec lib; // function library
     // mat m_u; // drivers
 
-public:
-    // sindy( mat xi ) : m_xi(xi) { }
-    sindy (mat xi) {
-        m_xi = xi;
-        m_lib = imat(m_xi.size2(), 4);
-    }
-    // sindy(mat xi , mat u) : m_xi(xi) , m_u(u) { }
-
-    // imat m_polylib (m_xi.size2(), 4);
-
-    void build_func_lib( )
+    int count_model_terms( sindy_configuration config )
     {
-
-        int n = 3;
-        int k = 0;
-
-        // O(1)
-        for ( int i = 0 ; i<n ; ++i)
+        int m = 0;
+        for(const string &term : config.library)
         {
-            m_lib(i, 0) = 1;
-            m_lib(i, 1) = i;
+            int delim = term.find("_");
+            string fkind = term.substr(0, delim);
+
+            if ( fkind == "poly" )
+            {
+                int k = stoi(term.substr(delim + 1, 1));
+                m += boost::math::binomial_coefficient<double>((n + s) + k - 1, k);
+            } 
+
+            else if ( fkind == "sin" || fkind == "cos" || fkind == "tan" )
+            {
+                m += (n + s);
+            } 
+
+            else 
+            {
+                m += 0;
+            }
+        }
+        return m;
+    }
+
+    mat load_coeffs( sindy_configuration config )
+    {
+        mat coeff (n, m);
+        for(const std::vector<double> ijv : config.coefficients)
+        {
+            coeff(ijv[0], ijv[1]) = ijv[2];
+        }
+        return coeff;
+    }
+
+
+public:
+
+    // Initializiation
+    sindy ( sindy_configuration config ) :
+        n(config.n_variables),
+        s(config.n_drivers),
+        m(count_model_terms(config)),
+        lib(load_library(config)),
+        xi(load_coeffs(config)) { }
+    
+    fvec load_library( sindy_configuration config )
+    {
+        fvec funcs(m);
+        int k = 0;
+        
+        for (int i=0 ; i<n ; ++i)
+        {
+            funcs[k] = [i]( vec x ){ return poly(x(i)); };
             k += 1;
         }
 
-        // O(2)
-        for (int i = 0 ; i<n ; ++i)
+        for (int i=0 ; i<n ; ++i)
         {
-            for (int j = i ; j<n ; ++j)
+            for (int j=i ; j < n ; ++j)
             {
-                m_lib(k, 0) = 2;
-                m_lib(k, 1) = i;
-                m_lib(k, 2) = j;
+                funcs[k] = [i, j]( vec x ){ return poly(x(i), x(j)); };
                 k += 1;
             }
         }
 
-        cout << m_lib << endl;
+        return funcs;
     }
 
-    void apply_func_lib( const vec &x , vec &theta)
+    static double poly( double x ){ return x; }
+    static double poly( double x, double y ){ return x * y; }
+
+    void apply_func_lib( const vec x , vec &theta)
     {
         for( int i=0 ; i<theta.size() ; ++i )
         {
-            theta(i) = poly(x, m_lib, i);
+            theta(i) = lib[i](x);
         }
     }
 
     void operator() ( const vec &x , vec &dxdt , const double /* t */ )
     {
-        vec theta( m_xi.size2() ) ; // initialize theta vector
-        apply_func_lib( x , theta ) ; // fill theta vector with actual values
-        dxdt = prod( m_xi, theta ) ;
+        vec theta( xi.size2() ); // initialize theta vector
+        apply_func_lib( x , theta ); // fill theta vector with actual values
+        dxdt = prod( xi, theta );
     }
+
 };
 
 void write_solution( const vec &x , const double t )
@@ -116,25 +148,15 @@ void write_solution( const vec &x , const double t )
 
 int main(int argc, char **argv)
 {
-
-    const double sigma = 10.0;
-    const double R = 28.0;
-    const double b = 8.0 / 3.0; 
-
-    mat coeff (3, 9); // all O(1) + O(2) polynomials
-    coeff(0,0) = -sigma;
-    coeff(0,1) = sigma;
-    coeff(1,0) = R;
-    coeff(1,1) = -1.0;
-    coeff(1,5) = -1.0;
-    coeff(2,2) = -b;
-    coeff(2,4) = 1.0;
+    std::ifstream f( "lorentz.json" );
+    json jconfig = json::parse(f);
+    const auto config = jconfig.template get<sindy_configuration>();
+    const sindy problem = sindy( config );
 
     vec x (3) ;
     x(0) = 10.0 ;
     x(1) = 1.0 ;
     x(2) = 1.0 ; // initial conditions
 
-    sindy problem = sindy( coeff );
     integrate( problem , x , 0.0 , 25.0 , 0.1 , write_solution );
 }
