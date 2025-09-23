@@ -1,4 +1,4 @@
-#include "features.h"
+#include "../sindy/features.h"
 
 using namespace std;
 using namespace features;
