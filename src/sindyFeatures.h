@@ -1,5 +1,5 @@
-#ifndef FEATURES_H   
-#define FEATURES_H
+#ifndef ROPE_MODELS_SINDYFEATURES_H   
+#define ROPE_MODELS_SINDYFEATURES_H
 
 #include <iostream>
 #include <cmath>
@@ -11,10 +11,11 @@
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
 
-typedef boost::numeric::ublas::vector<double> vec;
-typedef boost::numeric::ublas::matrix<double> mat;
+namespace sindyFeatures{ 
 
-namespace features{ 
+typedef boost::numeric::ublas::vector<double> state_vector;
+typedef boost::numeric::ublas::matrix<double> matrix;
+typedef std::vector<Feature*> feature_vector;
 
 template<typename Type>
 auto det_diag(const std::vector<Type>& v, Type init)
@@ -24,13 +25,13 @@ auto det_diag(const std::vector<Type>& v, Type init)
 
 class Feature{
 public:
-    virtual double get_value(const vec& z);
+    virtual double get_value(const state_vector& z);
     virtual void get_name();
 };
 
 class ConstantFeature : public Feature {
 public:
-    double get_value(const vec& z);
+    double get_value(const state_vector& z);
     void get_name();
 };
 
@@ -38,7 +39,7 @@ class LinearFeature : public Feature{
 public:
     const int i;
     LinearFeature(int i);
-    double get_value(const vec& z);
+    double get_value(const state_vector& z);
     void get_name();
 };
 
@@ -48,7 +49,7 @@ public:
     const int i;
     const int j;
     QuadraticFeature(int i, int j);
-    double get_value(const vec& z);
+    double get_value(const state_vector& z);
     void get_name();
 };
 
@@ -59,7 +60,7 @@ public:
     const int j;
     const int k;
     CubicFeature(int i, int j, int k);
-    double get_value(const vec& z);
+    double get_value(const state_vector& z);
     void get_name();
 };
 
@@ -68,10 +69,10 @@ class HighOrderPolynomialFeature : public Feature
 public:
     std::vector<double> _z;
     static std::vector<double> init_subvec(std::vector<int> idx);
-    void get_components(const vec& z);
+    void get_components(const state_vector& z);
     const std::vector<int> idx;
     HighOrderPolynomialFeature(std::vector<int> idx);
-    double get_value(const vec& z);
+    double get_value(const state_vector& z);
     void get_name();
 };
 
@@ -85,7 +86,7 @@ public:
     const double phase;
     const std::string rad_or_deg;
     SinusoidalFeature(int i, double scale, double phase, std::string rad_or_deg);
-    double get_value(const vec& z);
+    double get_value(const state_vector& z);
     void get_name();
 };
 
@@ -95,7 +96,7 @@ public:
     const int i;
     const double scale;
     ExponentialFeature(int i, double scale);
-    double get_value(const vec& zx);
+    double get_value(const state_vector& zx);
     void get_name();
 };
 
@@ -117,7 +118,7 @@ class Library
 
         // attributes
         // const unordered_map<string, int> feature_map; // mapping used for building the library
-        std::vector<Feature*> features = {}; // vector of all features
+        feature_vector features = {}; // vector of all features
         double m = 0; // number of model features
         double N = 0; // number of variables + drivers. Assumes an enhanced state vector z = (x_0, x_1 ... x_n, u_0, u_1 ... u_s)
 
@@ -126,7 +127,7 @@ class Library
         void build_features(std::vector<std::string> feature_list, double N);
 
         // add singular feature to inplace feature vector
-        void add_feature(std::vector<Feature*> &lib, Feature* new_feature);
+        void add_feature(feature_vector &lib, Feature* new_feature);
 
         // constructors
         Library();
@@ -136,13 +137,13 @@ class Library
         void add_feature(Feature* new_feature);
 
         // get value from one feature
-        double get_value(const vec& z, Feature* feature);
+        double get_value(const state_vector& z, Feature* feature);
 
         // get values, create new vector
-        vec get_values(const vec& z);
+        vec get_values(const state_vector& z);
 
         // get values, apply in place
-        void get_values(vec &theta, const vec& z);
+        void get_values(state_vector &theta, const state_vector& z);
 
         // get name/label of a feature
         void get_name(Feature* feature);

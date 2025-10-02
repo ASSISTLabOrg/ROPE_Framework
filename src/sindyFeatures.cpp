@@ -1,30 +1,30 @@
-#include "features.h"
+#include "sindyFeatures.h"
 
 const double PI = 3.1415;
 
-namespace features{
+namespace sindyFeatures{
 
 // Feature
-double Feature::get_value(const vec& z) {return 0.0;}
+double Feature::get_value(const state_vector& z) {return 0.0;}
 void Feature::get_name() {std::cout << "Null";}
 
 // Constant Feature
-double ConstantFeature::get_value(const vec& z) {return 1.0;}
+double ConstantFeature::get_value(const state_vector& z) {return 1.0;}
 void ConstantFeature::get_name() {std::cout << "Constant";}
 
 // LinearFeature
 LinearFeature::LinearFeature(int i) : i(i) {}
-double LinearFeature::get_value(const vec& z) {return z(i);}
+double LinearFeature::get_value(const state_vector& z) {return z(i);}
 void LinearFeature::get_name() {std::cout << "z" << i;}
 
 // QuadraticFeature
 QuadraticFeature::QuadraticFeature(int i, int j) : i(i), j(j) {}
-double QuadraticFeature::get_value(const vec& z) {return z(i) * z(j);}
+double QuadraticFeature::get_value(const state_vector& z) {return z(i) * z(j);}
 void QuadraticFeature::get_name() {std::cout << "z" << i << "z" << j;}
 
 // CubicFeature
 CubicFeature::CubicFeature(int i, int j, int k) : i(i), j(j), k(k) {}
-double CubicFeature::get_value(const vec& z) {return z(i) * z(j) * z(k);}
+double CubicFeature::get_value(const state_vector& z) {return z(i) * z(j) * z(k);}
 void CubicFeature::get_name() {std::cout << "z" << i << "z" << j << "z" << k;}
 
 // HighOrderPolynomialFeature
@@ -33,7 +33,7 @@ std::vector<double> HighOrderPolynomialFeature::init_subvec(std::vector<int> idx
     std::vector<double> _z(idx.size());
     return _z;
 }
-void HighOrderPolynomialFeature::get_components(const vec& z)
+void HighOrderPolynomialFeature::get_components(const state_vector& z)
 {
     for(int i=0 ; i < _z.size() ; ++i)
     {
@@ -41,7 +41,7 @@ void HighOrderPolynomialFeature::get_components(const vec& z)
     }
 }
 HighOrderPolynomialFeature::HighOrderPolynomialFeature(std::vector<int> idx) : idx(idx), _z(init_subvec(idx)) {}
-double HighOrderPolynomialFeature::get_value(const vec& z) 
+double HighOrderPolynomialFeature::get_value(const state_vector& z) 
 {
     HighOrderPolynomialFeature::get_components(z);
     return det_diag(_z, 1.0);
@@ -79,12 +79,12 @@ double SinusoidalFeature::get_phase(double val)
 }
 SinusoidalFeature::SinusoidalFeature(int i, double scale, double phase, std::string rad_or_deg="rad") : 
     i(i), rad_or_deg(rad_or_deg), scale(get_scale(scale)), phase(get_phase(phase))  {}
-double SinusoidalFeature::get_value(const vec& z) {return std::sin(scale * z(i) + phase);}
+double SinusoidalFeature::get_value(const state_vector& z) {return std::sin(scale * z(i) + phase);}
 void SinusoidalFeature::get_name() {std::cout << "sin(" << scale << " * " << "z" << i << " + " << phase << ")";}
 
 // ExponentialFeature
 ExponentialFeature::ExponentialFeature(int i, double scale) : i(i), scale(scale) {}
-double ExponentialFeature::get_value(const vec& z) {return std::exp(scale * z(i));}
+double ExponentialFeature::get_value(const state_vector& z) {return std::exp(scale * z(i));}
 void ExponentialFeature::get_name() {std::cout << "exp(" << scale << " * " << "z" << i << ")";}
 
 // Library
@@ -160,15 +160,15 @@ void Library::add_feature(Feature* new_feature)
 }
 
 // get value from one feature
-double Library::get_value(const vec& z, Feature* feature)
+double Library::get_value(const state_vector& z, Feature* feature)
 {
     return feature -> get_value(z);
 }
 
 // get values, create new vector
-vec Library::get_values(const vec &z)
+state_vector Library::get_values(const state_vector &z)
 {
-    vec result(m);
+    state_vector result(m);
     int i = 0;
     for(Feature* &feature : features)
     {
@@ -179,7 +179,7 @@ vec Library::get_values(const vec &z)
 }
 
 // get values, apply in place
-void Library::get_values(vec &theta, const vec &z)
+void Library::get_values(state_vector &theta, const state_vector &z)
 {
     int i = 0;
     for(Feature* &feature : features)

@@ -1,13 +1,9 @@
-#include "features.h"
-#include "models.h"
+#include "sindyFeatures.h"
+#include "densityModels.h"
 
-using features::Library;
-using boost::numeric::ublas::prod;
-using boost::numeric::odeint::integrate;
+namespace densityModels{
 
-namespace models{
-
-void write_solution( const vec &x , const double t )
+void write_solution( const state_vector &x , const double t )
 {
     std::cout << std::fixed;
     std::cout << std::setprecision(2);
@@ -22,12 +18,12 @@ void write_solution( const vec &x , const double t )
 
 //====================================== Generic virtual model ======================================
 
-void Model::predict(){ std::cout << "Null";}
-void Model::get_name(){ std::cout << "Null";}
+void DensityModel::predict(){ std::cout << "Null";}
+void DensityModel::get_name(){ std::cout << "Null";}
 
-//====================================== SINDYc model ======================================
+//====================================== SINDYc model ===============================================
 
-void SINDYc::push(const vec &x , vec &dxdt , double /* t */)
+void SINDYc::push(const state_vector &x , state_vector &dxdt , double /* t */)
 {
     dxdt = prod(A, library.get_values(x));
 }
@@ -43,9 +39,9 @@ SINDYc::SINDYc(double n, double s, std::vector<std::string> features, std::vecto
     A = build_coeffs(coeffs);
 }
 
-mat SINDYc::build_coeffs(std::vector<std::vector<double>> coeffs)
+matrix SINDYc::build_coeffs(std::vector<std::vector<double>> coeffs)
 {   
-    mat output(n_variables + n_controls, n_features);
+    matrix output(n_variables + n_controls, n_features);
     for(const std::vector<double> ijv : coeffs)
     {
         output(ijv[0], ijv[1]) = ijv[2];
