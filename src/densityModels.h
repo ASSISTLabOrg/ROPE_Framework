@@ -45,9 +45,8 @@ private:
     double n_controls = 0; // Length of control vector u = (u_1, u_2, ... , u_s) where u_i are the s external control variables
     double n_features = 0; // Length of library of features F = (f_1(X,U), f_2, ... , f_m), where f_i are the m features used to model the system
     Library library = Library(); // library of features F = (f_1(X,U), f_2, ... , f_m), where f_i are the m features used to model the system
+    driver_vector U = {}; // contains the drivers...
     matrix A; // A = matrix(n,m), containing the coefficients
-
-    std::vector<Controls*> controls = {};
 
     // Push method for prediction
     void push(const state_vector &x , state_vector &dxdt , double /* t */);
@@ -59,7 +58,7 @@ public:
 
     // Constructors
     SINDYc(std::string config_file);
-    SINDYc(double n, double s, std::vector<std::string> features, std::vector<std::vector<double>> coeffs);
+    SINDYc(double n, double s, std::vector<std::string> features, std::vector<std::vector<double>> coeffs, driver_vector drivers);
 
     // Prediction method
     void predict(vec& initial_state, double t_start, double t_end, double dt);

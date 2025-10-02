@@ -4,88 +4,122 @@ const double PI = 3.1415;
 
 namespace sindyFeatures{
 
-// Feature
-double Feature::get_value(const state_vector& z) {return 0.0;}
-void Feature::get_name() {std::cout << "Null";}
+/* ======================================================== Virtual Feature ======================================================== */
+double Feature::get_value(const double& /*t*/, const state_vector& /*z*/, const driver_vector& /*u*/) {
+    return 1.0;
+}
 
-// Constant Feature
-double ConstantFeature::get_value(const state_vector& z) {return 1.0;}
-void ConstantFeature::get_name() {std::cout << "Constant";}
+void Feature::get_name() {
+    std::cout << "Null";
+}
 
-// LinearFeature
-LinearFeature::LinearFeature(int i) : i(i) {}
-double LinearFeature::get_value(const state_vector& z) {return z(i);}
-void LinearFeature::get_name() {std::cout << "z" << i;}
+/* ======================================================== Linear Feature ======================================================== */
+LinearFeature::LinearFeature(int i) : i(i), i_is_state(true) {}
+LinearFeature::LinearFeature(int i, bool i_is_state) : i(i), i_is_state(i_is_state) {}
 
-// QuadraticFeature
-QuadraticFeature::QuadraticFeature(int i, int j) : i(i), j(j) {}
-double QuadraticFeature::get_value(const state_vector& z) {return z(i) * z(j);}
-void QuadraticFeature::get_name() {std::cout << "z" << i << "z" << j;}
+double LinearFeature::get_value(const state_vector& z) {
+    return z(i);
+}
 
-// CubicFeature
-CubicFeature::CubicFeature(int i, int j, int k) : i(i), j(j), k(k) {}
-double CubicFeature::get_value(const state_vector& z) {return z(i) * z(j) * z(k);}
+double LinearFeature::get_value(const double& t, const state_vector& z, const driver_vector& u) {
+    ( is_state ) 
+        ? return z(i) 
+        : return u[i](t);
+}
+
+void LinearFeature::get_name() {
+    ( is_state ) 
+        ? std::cout << "z" << i;
+        : std::cout << "u" << i;
+}
+
+struct Index { const int value; };
+struct DriverIndex : public Index { const int value; };
+struct StateIndex : public Index { const int value; };
+
+double get(const double& t, const state_vector& z, const driver_vector& u, const DriverIndex& i) { return u[i.value](t); }
+double get(const double& t, const state_vector& z, const driver_vector& u, const StateIndex& i) { return z(i.value); }
+
+
+/* ======================================================== Quadratic Feature ======================================================== */
+QuadraticFeature::QuadraticFeature(Index* i, Index* j) : i(i), j(j) {}
+
+double QuadraticFeature::get_value(const double& t, const state_vector& z, const driver_vector& u) {
+    return get(t, z, u, i) * get(t, z, u, j);
+}
+
+void QuadraticFeature::get_name() {
+    ( i_is_state )
+        ? std::string istr = "z_";
+        : std::string istr = "u_";
+    ( j_is_state )
+        ? std::string jstr = "z_";
+        : std::string jstr = "u_";
+    std::cout << istr << i << "*" << jstr << j;
+}
+
+/* ======================================================== Cubic Feature ======================================================== */
+CubicFeature::CubicFeature(int i, int j, int k) : 
+    i(i), j(j), k(k), i_is_state(true), j_is_state(true), k_is_state(true) {}
+
+CubicFeature::CubicFeature(int i, int j, int k, bool i_is_state, bool j_is_state, bool k_is_state) : 
+    i(i), j(j), k(k), i_is_state(i_is_state){}
+
+
+double CubicFeature::get_value(const double&t, const state_vector& z, const driver_vector& u) {
+    if ( jth_is_state ){
+        return z(i) * z(j) * u[k](t);
+    } else {
+        return z(i) * u[j](t) * u[k](t);
+    }
+}
+
+double CubicFeature::get_value(const double& t, const driver_vector& u){
+    return u[i](t) * u[j](t) * u[k](t);
+}
+
 void CubicFeature::get_name() {std::cout << "z" << i << "z" << j << "z" << k;}
 
-// HighOrderPolynomialFeature
-std::vector<double> HighOrderPolynomialFeature::init_subvec(std::vector<int> idx)
-{
-    std::vector<double> _z(idx.size());
-    return _z;
-}
-void HighOrderPolynomialFeature::get_components(const state_vector& z)
-{
-    for(int i=0 ; i < _z.size() ; ++i)
-    {
-        _z[i] = z(idx[i]);
-    }
-}
-HighOrderPolynomialFeature::HighOrderPolynomialFeature(std::vector<int> idx) : idx(idx), _z(init_subvec(idx)) {}
-double HighOrderPolynomialFeature::get_value(const state_vector& z) 
-{
-    HighOrderPolynomialFeature::get_components(z);
-    return det_diag(_z, 1.0);
-}
-void HighOrderPolynomialFeature::get_name() 
-{
-    for (const auto &i : idx)
-    {
-        std::cout << "z" << i;
-    }
-}
+// // HighOrderPolynomialFeature
+// std::vector<double> HighOrderPolynomialFeature::init_subvec(std::vector<int> idx)
+// {
+//     std::vector<double> _z(idx.size());
+//     return _z;
+// }
+// void HighOrderPolynomialFeature::get_components(const state_vector& z)
+// {
+//     for(int i=0 ; i < _z.size() ; ++i)
+//     {
+//         _z[i] = z(idx[i]);
+//     }
+// }
+// HighOrderPolynomialFeature::HighOrderPolynomialFeature(std::vector<int> idx) : idx(idx), _z(init_subvec(idx)) {}
+// double HighOrderPolynomialFeature::get_value(const state_vector& z) 
+// {
+//     HighOrderPolynomialFeature::get_components(z);
+//     return det_diag(_z, 1.0);
+// }
+// void HighOrderPolynomialFeature::get_name() 
+// {
+//     for (const auto &i : idx)
+//     {
+//         std::cout << "z" << i;
+//     }
+// }
 
-// SinusoidalFeature
-double SinusoidalFeature::get_scale(double val)
-{
-    if (rad_or_deg == "rad")
-    {
-        return val;
-    }
-    else
-    {
-        return val * 2.0 * PI;
-    }
-}
-double SinusoidalFeature::get_phase(double val)
-{
-    if (rad_or_deg == "rad")
-    {
-        return val;
-    }
-    else
-    {
-        return val * PI / 180;
-    }
-}
-SinusoidalFeature::SinusoidalFeature(int i, double scale, double phase, std::string rad_or_deg="rad") : 
-    i(i), rad_or_deg(rad_or_deg), scale(get_scale(scale)), phase(get_phase(phase))  {}
-double SinusoidalFeature::get_value(const state_vector& z) {return std::sin(scale * z(i) + phase);}
-void SinusoidalFeature::get_name() {std::cout << "sin(" << scale << " * " << "z" << i << " + " << phase << ")";}
+// // SineFeature
+// SineFeature::SineFeature(int i) : i(i) {}
+// double SineFeature::get_value(const state_vector& z) {return std::sin(PI * z(i));}
+// void SineFeature::get_name() {std::cout << "sin(z_" << i << ")";}
 
-// ExponentialFeature
-ExponentialFeature::ExponentialFeature(int i, double scale) : i(i), scale(scale) {}
-double ExponentialFeature::get_value(const state_vector& z) {return std::exp(scale * z(i));}
-void ExponentialFeature::get_name() {std::cout << "exp(" << scale << " * " << "z" << i << ")";}
+// CosineFeature::CosineFeature(int i) : i(i) {}
+// double CosineFeature::get_value(const state_vector& z) {return std::cos(PI * z(i));}
+// void CosineFeature::get_name() {std::cout << "cos(z_" << i << ")";}
+
+// // ExponentialFeature
+// ExponentialFeature::ExponentialFeature(int i) : i(i) {}
+// double ExponentialFeature::get_value(const state_vector& z) {return std::exp(z(i));}
+// void ExponentialFeature::get_name() {std::cout << "exp(z_" << i << ")";}
 
 // Library
 void Library::build_features(std::vector<std::string> feature_list, double N)
@@ -160,9 +194,9 @@ void Library::add_feature(Feature* new_feature)
 }
 
 // get value from one feature
-double Library::get_value(const state_vector& z, Feature* feature)
+double Library::get_value(const double&t, const state_vector& z, const driver_vector& u, Feature* feature);
 {
-    return feature -> get_value(z);
+    return feature -> get_value(t, z, u);
 }
 
 // get values, create new vector
@@ -204,3 +238,12 @@ void Library::get_names()
 }
 
 }
+
+// // get value from one feature
+// double get_value(const double&t, const state_vector& z, const driver_vector& u, Feature* feature);
+
+// // get values, create new vector
+// vec get_values(const double& t, const state_vector& z, const driver_vector& u);
+
+// // get values, apply in place
+// void get_values(const double& t, state_vector &theta, const state_vector& z, const driver_vector& u);

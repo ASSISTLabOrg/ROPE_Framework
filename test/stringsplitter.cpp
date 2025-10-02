@@ -29,6 +29,8 @@ int main(int argc, char **argv){
         ss.str(std::string());
     }
 
+    std::vector<double> x = {1, 10, 17};
+
     for (int i=0 ; i < 3 ; ++i)
     {
         for (int j=i ; j < 3 ; ++j)
@@ -52,12 +54,13 @@ int main(int argc, char **argv){
 
             else
             {
+                std::vector<std::string> vars 
                 std::vector<std::string> vars = split(tokens[i], "*");
                 for (std::string var : vars)
                 {
                     std::vector<std::string> var_num = split(var, "_");
                     int n = std::stoi(var_num[1]);
-                    std::cout << "Variable: " << var_num[0] << ", Index: " << n << "\t";
+                    std::cout << "Variable: " << var_num[0] << ", Index: " << n << ", Value: " << x[n] << "\t";
                 }
             }
         }

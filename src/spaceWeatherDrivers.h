@@ -7,12 +7,9 @@
 #include <numeric> 
 #include <boost/math/interpolators/cardinal_cubic_b_spline.hpp>
 
-namespace swDrivers{
+namespace SpaceWeatherDrivers{
 
-typedef boost::math::interpolators::cardinal_cubic_b_spline<double> bspline;
-typedef std::vector<Driver> driver_vector;
-
-class swDriver{
+class SpaceWeatherDriver{
 
 private:
 
@@ -22,8 +19,8 @@ private:
 
 public: 
 
-    swDriver(std::vector<double> values, double t0, double dt, std::string label);
-    double operator() (double t);
+    Driver(std::vector<double> values, double t0, double dt, std::string label);
+    double operator() (const double& t);
 };
 
 };
