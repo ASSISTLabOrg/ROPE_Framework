@@ -23,9 +23,9 @@ void DensityModel::get_name(){ std::cout << "Null";}
 
 //====================================== SINDYc model ===============================================
 
-void SINDYc::push(const state_vector &x , state_vector &dxdt , double /* t */)
+void SINDYc::push(const state_vector &x , state_vector &dxdt , double /* t */, driver_vector& drivers)
 {
-    dxdt = prod(A, library.get_values(x));
+    dxdt = prod(A, library.get_values(t, x, drivers));
 }
 
 SINDYc::SINDYc(std::string config_file){}
@@ -49,11 +49,11 @@ matrix SINDYc::build_coeffs(std::vector<std::vector<double>> coeffs)
     return output;
 }
 
-void SINDYc::predict(vec& initial_state, double t_start, double t_end, double dt)
+void SINDYc::predict(const state_vector& initial_state, const driver_vector& drivers, const double& t_start, const double& t_end, const double& dt)
 {
     auto lambda_system = [this](const vec& x, vec& dxdt, const double t) 
     {
-        this->push(x, dxdt, t);
+        this->push(x, dxdt, t, drivers);
     };
 
     integrate(lambda_system, initial_state, t_start, t_end, dt, write_solution);

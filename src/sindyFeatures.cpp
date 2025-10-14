@@ -4,6 +4,24 @@ const double PI = 3.1415;
 
 namespace sindyFeatures{
 
+
+/* ======================================================== Getters ======================================================== */
+
+double VarGetter::get(const double& /* t */, const state_vector& /* z */, const drive_vector& /* u */) {
+    return 0.0;
+}
+
+StateGetter::StateGetter(int i) : value(i) {}
+double StateGetter::get(const double& /* t */, const state_vector& z, const drive_vector& /* u */) {
+    return z(this -> value);
+}
+
+DriverGetter::DriverGetter(int i) : value(i) {}
+double DriverGetter::get(const double& t, const state_vector& /* z */, const drive_vector& u) {
+    return u[this -> value](t);
+}
+
+
 /* ======================================================== Virtual Feature ======================================================== */
 double Feature::get_value(const double& /*t*/, const state_vector& /*z*/, const driver_vector& /*u*/) {
     return 1.0;
@@ -14,71 +32,57 @@ void Feature::get_name() {
 }
 
 /* ======================================================== Linear Feature ======================================================== */
-LinearFeature::LinearFeature(int i) : i(i), i_is_state(true) {}
-LinearFeature::LinearFeature(int i, bool i_is_state) : i(i), i_is_state(i_is_state) {}
-
-double LinearFeature::get_value(const state_vector& z) {
-    return z(i);
-}
+LinearFeature::LinearFeature(VarGetter* i) : i(i) {}
 
 double LinearFeature::get_value(const double& t, const state_vector& z, const driver_vector& u) {
-    ( is_state ) 
-        ? return z(i) 
-        : return u[i](t);
+    return i -> get();
 }
 
 void LinearFeature::get_name() {
-    ( is_state ) 
-        ? std::cout << "z" << i;
-        : std::cout << "u" << i;
+    std::cout << i;
+    // ( typeid(*getter) == typeid(StateGetter)) 
+    //     ? std::cout << "z" << i;
+    //     : std::cout << "u" << i;
 }
-
-struct Index { const int value; };
-struct DriverIndex : public Index { const int value; };
-struct StateIndex : public Index { const int value; };
-
-double get(const double& t, const state_vector& z, const driver_vector& u, const DriverIndex& i) { return u[i.value](t); }
-double get(const double& t, const state_vector& z, const driver_vector& u, const StateIndex& i) { return z(i.value); }
-
 
 /* ======================================================== Quadratic Feature ======================================================== */
-QuadraticFeature::QuadraticFeature(Index* i, Index* j) : i(i), j(j) {}
+// QuadraticFeature::QuadraticFeature(Index* i, Index* j) : i(i), j(j) {}
 
-double QuadraticFeature::get_value(const double& t, const state_vector& z, const driver_vector& u) {
-    return get(t, z, u, i) * get(t, z, u, j);
-}
+// double QuadraticFeature::get_value(const double& t, const state_vector& z, const driver_vector& u) {
+//     return get(t, z, u, i) * get(t, z, u, j);
+// }
 
-void QuadraticFeature::get_name() {
-    ( i_is_state )
-        ? std::string istr = "z_";
-        : std::string istr = "u_";
-    ( j_is_state )
-        ? std::string jstr = "z_";
-        : std::string jstr = "u_";
-    std::cout << istr << i << "*" << jstr << j;
-}
+// void QuadraticFeature::get_name() {
+//     ( i )
+//         ? std::string istr = "z_";
+//         : std::string istr = "u_";
+//     ( j_is_state )
+//         ? std::string jstr = "z_";
+//         : std::string jstr = "u_";
+//     std::cout << istr << i << "*" << jstr << j;
+// }
 
 /* ======================================================== Cubic Feature ======================================================== */
-CubicFeature::CubicFeature(int i, int j, int k) : 
-    i(i), j(j), k(k), i_is_state(true), j_is_state(true), k_is_state(true) {}
+// CubicFeature::CubicFeature(int i, int j, int k) : 
+//     i(i), j(j), k(k), i_is_state(true), j_is_state(true), k_is_state(true) {}
 
-CubicFeature::CubicFeature(int i, int j, int k, bool i_is_state, bool j_is_state, bool k_is_state) : 
-    i(i), j(j), k(k), i_is_state(i_is_state){}
+// CubicFeature::CubicFeature(int i, int j, int k, bool i_is_state, bool j_is_state, bool k_is_state) : 
+//     i(i), j(j), k(k), i_is_state(i_is_state){}
 
 
-double CubicFeature::get_value(const double&t, const state_vector& z, const driver_vector& u) {
-    if ( jth_is_state ){
-        return z(i) * z(j) * u[k](t);
-    } else {
-        return z(i) * u[j](t) * u[k](t);
-    }
-}
+// double CubicFeature::get_value(const double&t, const state_vector& z, const driver_vector& u) {
+//     if ( jth_is_state ){
+//         return z(i) * z(j) * u[k](t);
+//     } else {
+//         return z(i) * u[j](t) * u[k](t);
+//     }
+// }
 
-double CubicFeature::get_value(const double& t, const driver_vector& u){
-    return u[i](t) * u[j](t) * u[k](t);
-}
+// double CubicFeature::get_value(const double& t, const driver_vector& u){
+//     return u[i](t) * u[j](t) * u[k](t);
+// }
 
-void CubicFeature::get_name() {std::cout << "z" << i << "z" << j << "z" << k;}
+// void CubicFeature::get_name() {std::cout << "z" << i << "z" << j << "z" << k;}
 
 // // HighOrderPolynomialFeature
 // std::vector<double> HighOrderPolynomialFeature::init_subvec(std::vector<int> idx)
@@ -141,24 +145,24 @@ void Library::build_features(std::vector<std::string> feature_list, double N)
                 break;
 
             case 2: // Quadratic terms
-                for (int i=0 ; i<N ; ++i)
-                {
-                    for (int j=i ; j<N ; ++j)
-                    {
-                        add_feature(new QuadraticFeature(i, j));
-                    }
-                }
+                // for (int i=0 ; i<N ; ++i)
+                // {
+                //     for (int j=i ; j<N ; ++j)
+                //     {
+                //         add_feature(new QuadraticFeature(i, j));
+                //     }
+                // }
                 break;
 
             case 3: // Cubic terms
-                for (int i=0 ; i<N ; ++i)
-                {
-                    for (int j=i ; j<N ; ++j)
-                    {
-                        for (int k = j ; k<N ; ++k)
-                            add_feature(new CubicFeature(i, j, k));
-                    }
-                }
+                // for (int i=0 ; i<N ; ++i)
+                // {
+                //     for (int j=i ; j<N ; ++j)
+                //     {
+                //         for (int k = j ; k<N ; ++k)
+                //             add_feature(new CubicFeature(i, j, k));
+                //     }
+                // }
                 break;
 
             case 4: // N > 3 Polynomial terms

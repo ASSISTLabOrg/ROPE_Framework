@@ -23,6 +23,20 @@ auto det_diag(const std::vector<Type>& v, Type init)
     return std::accumulate(v.cbegin(), v.cend(), init, std::multiplies<Type>{});
 }
 
+struct VarGetter {
+    virtual void get()
+};
+struct StateGetter : public VarGetter {
+    int value;
+    Index_0(int i) : value(i) {}
+    double get(const double& /* t */, const state_vector& z, const drive_vector& /* u */) {return z(this -> value);}
+};
+struct DriverGetter : public VarGetter {
+    int value;
+    Index_1(int i) : value(i) {}
+    double get(const double& t, const state_vector& /* z */, const drive_vector& u) {return u[this -> value](t);}
+};
+
 class Feature{
 public:
     virtual double get_value(const double t, const state_vector& z, const driver_vector& u);
@@ -41,29 +55,29 @@ public:
 double get(const state_vector& z){ return z(i); }
 double get(const double& t, const driver_vector& u){ return u[i](t); }
 
-class QuadraticFeature : public Feature
-{
-public:
-    const int i;
-    const int j;
-    QuadraticFeature(int i, int j);
-    QuadraticFeature(int i, int j, bool i_is_state, bool j_is_state);
-    double get_value(const state_vector& z);
-    double get_value(const double t, const state_vector& z, const driver_vector& u);
-    void get_name();
-};
+// class QuadraticFeature : public Feature
+// {
+// public:
+//     const int i;
+//     const int j;
+//     QuadraticFeature(int i, int j);
+//     QuadraticFeature(int i, int j, bool i_is_state, bool j_is_state);
+//     double get_value(const state_vector& z);
+//     double get_value(const double t, const state_vector& z, const driver_vector& u);
+//     void get_name();
+// };
 
-class CubicFeature : public Feature
-{
-public:
-    const int i;
-    const int j;
-    const int k;
-    CubicFeature(int i, int j, int k);
-    double get_value(const state_vector& z);
-    double get_value(const double t, const state_vector& z, const driver_vector& u);
-    void get_name();
-};
+// class CubicFeature : public Feature
+// {
+// public:
+//     const int i;
+//     const int j;
+//     const int k;
+//     CubicFeature(int i, int j, int k);
+//     double get_value(const state_vector& z);
+//     double get_value(const double t, const state_vector& z, const driver_vector& u);
+//     void get_name();
+// };
 
 // class HighOrderPolynomialFeature : public Feature
 // {
@@ -76,7 +90,6 @@ public:
 //     double get_value(const state_vector& z);
 //     void get_name();
 // };
-double get_value(const double t, const state_vector& u);
 
 // class SineFeature : public Feature
 // {
