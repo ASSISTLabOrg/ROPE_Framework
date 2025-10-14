@@ -12,7 +12,6 @@
 
 namespace densityModels{
 
-using sindyFeatures::Library;
 using boost::numeric::ublas::prod;
 using boost::numeric::odeint::integrate;
 
@@ -67,28 +66,6 @@ public:
     void list_features();
 
 };
-
-// class DMDc : public DensityModel
-// {
-// private:
-// public:
-//     // Constructors
-//     DMDc(std::string config_file);
-
-//     // Predictor
-//     void predict(vec& initial_state, double t_start, double t_end, double dt);
-// };
-
-// class LSTM : public DensityModel 
-// {
-// private:
-// public:
-//     // Constructors
-//     LSTM(std::string config_file);
-
-//     // Prediction method
-//     void predict(vec& initial_state, double t_start, double t_end, double dt);
-// };
 
 };
 

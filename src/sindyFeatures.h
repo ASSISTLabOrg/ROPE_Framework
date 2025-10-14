@@ -13,9 +13,9 @@
 
 namespace sindyFeatures{ 
 
-typedef boost::numeric::ublas::vector<double> state_vector;
+// typedef boost::numeric::ublas::vector<double> state_vector;
+typedef std::vector<double> state_vector;
 typedef boost::numeric::ublas::matrix<double> matrix;
-typedef std::vector<Feature*> feature_vector;
 
 template<typename Type>
 auto det_diag(const std::vector<Type>& v, Type init)
@@ -23,61 +23,37 @@ auto det_diag(const std::vector<Type>& v, Type init)
     return std::accumulate(v.cbegin(), v.cend(), init, std::multiplies<Type>{});
 }
 
-struct VarGetter {
-    virtual void get()
-};
-struct StateGetter : public VarGetter {
-    int value;
-    Index_0(int i) : value(i) {}
-    double get(const double& /* t */, const state_vector& z, const drive_vector& /* u */) {return z(this -> value);}
-};
-struct DriverGetter : public VarGetter {
-    int value;
-    Index_1(int i) : value(i) {}
-    double get(const double& t, const state_vector& /* z */, const drive_vector& u) {return u[this -> value](t);}
-};
-
 class Feature{
 public:
-    virtual double get_value(const double t, const state_vector& z, const driver_vector& u);
-    virtual void get_name();
+    virtual double get_value(const double& /* t */);
 };
+typedef std::vector<Feature*> feature_vector;
 
 class LinearFeature : public Feature{
 public:
-    const int i;
+    int _i;
     LinearFeature(int i);
-    double get_value(const state_vector& z);
-    double get_value(const double t, const state_vector& z, const driver_vector& u);
-    void get_name();
+    double get_value(const state_vector& q);
 };
 
-double get(const state_vector& z){ return z(i); }
-double get(const double& t, const driver_vector& u){ return u[i](t); }
+class QuadraticFeature : public Feature
+{
+public:
+    const int _i;
+    const int _j;
+    QuadraticFeature(int i, int j);
+    double get_value(const state_vector& q);
+};
 
-// class QuadraticFeature : public Feature
-// {
-// public:
-//     const int i;
-//     const int j;
-//     QuadraticFeature(int i, int j);
-//     QuadraticFeature(int i, int j, bool i_is_state, bool j_is_state);
-//     double get_value(const state_vector& z);
-//     double get_value(const double t, const state_vector& z, const driver_vector& u);
-//     void get_name();
-// };
-
-// class CubicFeature : public Feature
-// {
-// public:
-//     const int i;
-//     const int j;
-//     const int k;
-//     CubicFeature(int i, int j, int k);
-//     double get_value(const state_vector& z);
-//     double get_value(const double t, const state_vector& z, const driver_vector& u);
-//     void get_name();
-// };
+class CubicFeature : public Feature
+{
+public:
+    const int _i;
+    const int _j;
+    const int _k;
+    CubicFeature(int i, int j, int k);
+    double get_value(const state_vector& q);
+};
 
 // class HighOrderPolynomialFeature : public Feature
 // {
@@ -118,57 +94,57 @@ double get(const double& t, const driver_vector& u){ return u[i](t); }
 //     void get_name();
 // };
 
-class Library
-{
-    public:
+// class Library
+// {
+//     public:
 
-        std::unordered_map<std::string, int> feature_map = {
-        // {"constant", 0}, // 1
-        {"poly_1", 1}, // z_i
-        {"poly_2", 2}, // z_i * z_j
-        {"poly_3", 3}, // z_i * z_j * z_k
-        // {"poly_N", 4}, // z_i * ... * z_n ; n > 3
-        // {"sin_1", 5}, // sin(a * z_i + b)
-        // {"cos_1", 6}, // cos(a * z_i + b)
-        // {"tan_1", 7}, // tan(a * z_i + b)
-        // {"exp_1", 8} // exp(a * z_i)
-        };
+//         std::unordered_map<std::string, int> feature_map = {
+//         // {"constant", 0}, // 1
+//         {"poly_1", 1}, // z_i
+//         {"poly_2", 2}, // z_i * z_j
+//         {"poly_3", 3}, // z_i * z_j * z_k
+//         // {"poly_N", 4}, // z_i * ... * z_n ; n > 3
+//         // {"sin_1", 5}, // sin(a * z_i + b)
+//         // {"cos_1", 6}, // cos(a * z_i + b)
+//         // {"tan_1", 7}, // tan(a * z_i + b)
+//         // {"exp_1", 8} // exp(a * z_i)
+//         };
 
-        // attributes
-        // const unordered_map<string, int> feature_map; // mapping used for building the library
-        feature_vector features = {}; // vector of all features
-        double m = 0; // number of model features
-        double N = 0; // number of variables + drivers. Assumes an enhanced state vector z = (x_0, x_1 ... x_n, u_0, u_1 ... u_s)
+//         // attributes
+//         // const unordered_map<string, int> feature_map; // mapping used for building the library
+//         feature_vector features = {}; // vector of all features
+//         double m = 0; // number of model features
+//         double N = 0; // number of variables + drivers. Assumes an enhanced state vector z = (x_0, x_1 ... x_n, u_0, u_1 ... u_s)
 
-        // add all features based on input
-        // std::vector<Feature*> build_features(std::vector<std::string> feature_list, double N);
-        void build_features(std::vector<std::string> feature_list, double N);
+//         // add all features based on input
+//         // std::vector<Feature*> build_features(std::vector<std::string> feature_list, double N);
+//         void build_features(std::vector<std::string> feature_list, double N);
 
-        // add singular feature to inplace feature vector
-        void add_feature(feature_vector &lib, Feature* new_feature);
+//         // add singular feature to inplace feature vector
+//         void add_feature(feature_vector &lib, Feature* new_feature);
 
-        // constructors
-        Library();
-        Library(std::vector<std::string> feature_list, int N); // build library
+//         // constructors
+//         Library();
+//         Library(std::vector<std::string> feature_list, int N); // build library
 
-        // add new feature to library
-        void add_feature(Feature* new_feature);
+//         // add new feature to library
+//         void add_feature(Feature* new_feature);
 
-        // get value from one feature
-        double get_value(const double& t, const state_vector& z, const driver_vector& u, Feature* feature);
+//         // get value from one feature
+//         double get_value(const double& t, const state_vector& z, const driver_vector& u, Feature* feature);
 
-        // get values, create new vector
-        vec get_values(const double& t, const state_vector& z, const driver_vector& u);
+//         // get values, create new vector
+//         vec get_values(const double& t, const state_vector& z, const driver_vector& u);
 
-        // get values, apply in place
-        void get_values(const double& t, state_vector &theta, const state_vector& z, const driver_vector& u);
+//         // get values, apply in place
+//         void get_values(const double& t, state_vector &theta, const state_vector& z, const driver_vector& u);
 
-        // get name/label of a feature
-        void get_name(Feature* feature);
+//         // get name/label of a feature
+//         void get_name(Feature* feature);
 
-        // returns all feature names
-        void get_names();
-};
+//         // returns all feature names
+//         void get_names();
+// };
 
 }
 
