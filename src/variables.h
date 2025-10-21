@@ -1,5 +1,5 @@
-#ifndef ROPE_MODELS_STATEVARIABLES_H   
-#define ROPE_MODELS_STATEVARIABLES_H
+#ifndef ROPE_VARIABLES_H   
+#define ROPE_VARIABLES_H
 
 #include <iostream>
 #include <cmath>
@@ -7,9 +7,8 @@
 #include <string>
 #include <numeric> 
 #include <functional>
-#include <boost/numeric/ublas/vector.hpp>
 
-namespace stateVariables{
+namespace variables{
 
     template<typename T>
     auto linterp(const T& xn, const std::vector<T>& x, const std::vector<T>& y)
@@ -35,7 +34,8 @@ namespace stateVariables{
         virtual double get(const int& /* i */);
     };
 
-    typedef std::vector<std::unique_ptr<Variable>> state_vector;
+    typedef std::unique_ptr<Variable> variable_ptr;
+    typedef std::vector<variable_ptr> variable_vector;    
 
     struct StateVariable : Variable {
         std::vector<double> _t;
@@ -61,9 +61,8 @@ namespace stateVariables{
 
         state_vector _vars;
         State(state_vector vars);
-        void put(const std::vector<double>& z);
-        std::vector<double> get(const double& t);
-        std::vector<double> get(const int& i);
+        void put(const std::vector<double>& new_state);
+        std::vector<double> get(const int& index);
 
     };
 

@@ -1,36 +1,50 @@
-#include "sindyFeatures.h"
+#include "sindy.h"
 
 const double PI = 3.1415;
 
-namespace sindyFeatures{
+namespace sindy{
 
 /* ======================================================== Virtual Feature ======================================================== */
-double Feature::get_value(const double& /*t*/) {
-    return 1.0;
-}
+double Feature::get(const double& /* t */) { return 1.0; }
+double Feature::get(const int& /* i */) { return 1.0; }
 
 /* ======================================================== Linear Feature ======================================================== */
-LinearFeature::LinearFeature(int i) : _i(i) {}
+LinearFeature::LinearFeature(var_ptr var) : 
+    _var0(var), _delta_time_index(0) {}
 
-double LinearFeature::get_value(const state_vector& q) {
-    return q[_i];
+LinearFeature::LinearFeature(var_ptr var, int delta_time_index) : 
+    _var0(var), _delta_time_index(delta_time_index) {}
+
+double LinearFeature::get(const int& index) {
+    return _var0 -> get(index - delta_time_index);
 }
 
 /* ======================================================== Quadratic Feature ======================================================== */
 
-QuadraticFeature::QuadraticFeature(int i, int j) : _i(i), _j(j) {}
+QuadraticFeature::QuadraticFeature(var_ptr var0, var_ptr var1) : 
+    _var0(var0), _var1(var1), _delta_time_index(0) {}
 
-double QuadraticFeature::get_value(const state_vector& q) {
-    return q[_i] * q[_j];
+QuadraticFeature::QuadraticFeature(var_ptr var0, var_ptr var1, int delta_time_index) : 
+    _var0(var0), _var1(var1), _delta_time_index(delta_time_index) {}
+
+double QuadraticFeature::get(const int& index) {
+    double x0 = _var0 -> get(index - _delta_time_index);
+    double x1 = _var1 -> get(index - _delta_time_index);
+    return x0 * x1;
 }
 
-/* ======================================================== Cubic Feature ======================================================== */
-CubicFeature::CubicFeature(int i, int j, int k) : _i(i), _j(j), _k(k) {}
+/* ======================================================== Feature Library ======================================================== */
 
-double CubicFeature::get_value(const state_vector& q){
-    return q[_i] * q[_j] * q[_k]
+FeatureLibrary::FeatureLibrary(feature_vector features) : _feature(features) {}
+
+std::vector<double> FeatureLibrary::get(const int& index) {
+    std::vector<double> result;
+    for (feature_ptr feature : _features)
+    {
+        result.push_back(feature -> get(index));
+    }
+    return result;
 }
-
 
 // // HighOrderPolynomialFeature
 // std::vector<double> HighOrderPolynomialFeature::init_subvec(std::vector<int> idx)

@@ -1,5 +1,5 @@
-#ifndef ROPE_MODELS_SINDYFEATURES_H   
-#define ROPE_MODELS_SINDYFEATURES_H
+#ifndef ROPE_SINDY_H   
+#define ROPE_SINDY_H
 
 #include <memory>
 #include <iostream>
@@ -9,14 +9,11 @@
 #include <numeric> 
 #include <functional>
 #include <map>
-#include <boost/numeric/ublas/vector.hpp>
-#include <boost/numeric/ublas/matrix.hpp>
+#include "variables.h"
 
-namespace sindyFeatures{ 
+namespace sindy{
 
-// typedef boost::numeric::ublas::vector<double> state_vector;
-typedef std::vector<double> state_vector;
-typedef boost::numeric::ublas::matrix<double> matrix;
+using variables::variable_ptr;
 
 template<typename Type>
 auto det_diag(const std::vector<Type>& v, Type init)
@@ -26,42 +23,36 @@ auto det_diag(const std::vector<Type>& v, Type init)
 
 struct Feature{
     virtual double get(const double& /* t */);
-};
-typedef std::vector<std::unique_ptr<Feature>> feature_vector;
-
-struct LinearFeature : Feature {
-public:
-    std::unique_ptr<Variable> _var;
-    double _dt; // backwards timestep
-    LinearFeature();
-    LinearFeature(double dt);
-    double get(const double& t);
+    virtual double get(const int& /* i */);
 };
 
-struct QuadraticFeature : public Feature
+typedef std::unique_ptr<Feature> feature_ptr;
+typedef std::vector<feature_ptr> feature_vector;
+
+struct LinearFeature : Feature 
 {
-public:
-    const int _i;
-    const int _j;
-    QuadraticFeature(int i, int j);
-    double get_value(const state_vector& q);
+    variable_ptr _var0;
+    const int _delta_time_index;
+    LinearFeature(variable_ptr var);
+    LinearFeature(variable_ptr var, int delta_time_index);
+    // double get(const double& time);
+    double get(const int& index);
 };
 
-class CubicFeature : public Feature
+struct QuadraticFeature : Feature
 {
-public:
-    const int _i;
-    const int _j;
-    const int _k;
-    CubicFeature(int i, int j, int k);
-    double get_value(const state_vector& q);
+    variable_ptr _var0;
+    variable_ptr _var1;
+    const int _delta_time_index;
+    QuadraticFeature(variable_ptr var0, variable_ptr var1, int delta_time_index);
+    double get(const int& index);
 };
 
-class FeatureLibrary
+struct FeatureLibrary
 {
-
-    std::vector<Feature*> _features;
-
+    feature_vector _features;
+    FeatureLibrary(feature_vector features);
+    std::vector<double> get(const int& index);
 };
 
 // class HighOrderPolynomialFeature : public Feature
