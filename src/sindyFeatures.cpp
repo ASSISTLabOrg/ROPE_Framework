@@ -59,9 +59,9 @@ double CubicFeature::get_value(const state_vector& q){
 //     }
 // }
 
-// // SineFeature
-// SineFeature::SineFeature(int i) : i(i) {}
-// double SineFeature::get_value(const state_vector& z) {return std::sin(PI * z(i));}
+// SineFeature
+// SineFeature::SineFeature(int i) : _i(i) {}
+// double SineFeature::get_value(const state_vector& q) {return std::sin(PI * q[_i]);}
 // void SineFeature::get_name() {std::cout << "sin(z_" << i << ")";}
 
 // CosineFeature::CosineFeature(int i) : i(i) {}

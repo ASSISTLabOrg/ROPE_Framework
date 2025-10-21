@@ -31,28 +31,40 @@ namespace stateVariables{
 
     struct Variable {
         virtual void put(const double& /* t */, const double& /*value*/);
-        virtual double get_value(const double& /* t */);
-        virtual double get_value(const int& /* i */);
+        virtual double get(const double& /* t */);
+        virtual double get(const int& /* i */);
     };
 
-    struct StateVariable : public Variable {
+    typedef std::vector<std::unique_ptr<Variable>> state_vector;
+
+    struct StateVariable : Variable {
         std::vector<double> _t;
         std::vector<double> _values;
         StateVariable();
         StateVariable(const double& t_0, const double& v_0);
         void put(const double& t, const double& value);
-        double get_value(const double& t);
-        double get_value(const int& i);
+        double get(const double& t);
+        double get(const int& i);
     };
 
-    struct ControlVariable : public Variable
+    struct ControlVariable : Variable
     {
         const std::vector<double> _t;
         const std::vector<double> _values;
         ControlVariable(std::vector<double> t, std::vector<double> values);
         void put(const double& /* t */, const double& /* value */);
-        double get_value(const double& t);
-        double get_value(const int& i);
+        double get(const double& t);
+        double get(const int& i);
+    };
+
+    struct State {
+
+        state_vector _vars;
+        State(state_vector vars);
+        void put(const std::vector<double>& z);
+        std::vector<double> get(const double& t);
+        std::vector<double> get(const int& i);
+
     };
 
 };

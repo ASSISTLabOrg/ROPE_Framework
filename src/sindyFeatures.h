@@ -1,6 +1,7 @@
 #ifndef ROPE_MODELS_SINDYFEATURES_H   
 #define ROPE_MODELS_SINDYFEATURES_H
 
+#include <memory>
 #include <iostream>
 #include <cmath>
 #include <fstream>
@@ -23,20 +24,21 @@ auto det_diag(const std::vector<Type>& v, Type init)
     return std::accumulate(v.cbegin(), v.cend(), init, std::multiplies<Type>{});
 }
 
-class Feature{
-public:
-    virtual double get_value(const double& /* t */);
+struct Feature{
+    virtual double get(const double& /* t */);
 };
-typedef std::vector<Feature*> feature_vector;
+typedef std::vector<std::unique_ptr<Feature>> feature_vector;
 
-class LinearFeature : public Feature{
+struct LinearFeature : Feature {
 public:
-    int _i;
-    LinearFeature(int i);
-    double get_value(const state_vector& q);
+    std::unique_ptr<Variable> _var;
+    double _dt; // backwards timestep
+    LinearFeature();
+    LinearFeature(double dt);
+    double get(const double& t);
 };
 
-class QuadraticFeature : public Feature
+struct QuadraticFeature : public Feature
 {
 public:
     const int _i;
@@ -53,6 +55,13 @@ public:
     const int _k;
     CubicFeature(int i, int j, int k);
     double get_value(const state_vector& q);
+};
+
+class FeatureLibrary
+{
+
+    std::vector<Feature*> _features;
+
 };
 
 // class HighOrderPolynomialFeature : public Feature
