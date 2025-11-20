@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/violet.player/codes/ROPE_Framework/test/example-app/build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}
