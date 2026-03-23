@@ -1,3 +1,0 @@
-/home/violet.player/codes/ROPE_Framework/test/example-app/build/CMakeFiles/example-app.dir
-/home/violet.player/codes/ROPE_Framework/test/example-app/build/CMakeFiles/edit_cache.dir
-/home/violet.player/codes/ROPE_Framework/test/example-app/build/CMakeFiles/rebuild_cache.dir

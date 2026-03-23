@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/forecast.dir/link.d CMakeFiles/forecast.dir/forecast.cpp.o -o forecast  -Wl,-rpath,/home/violet/codes/ROPE_Framework/build:/home/violet/codes/ROPE_Framework/external/onnxruntime/lib: ../libphysics_prediction.so /home/violet/codes/ROPE_Framework/external/onnxruntime/lib/libonnxruntime.so
