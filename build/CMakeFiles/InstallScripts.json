@@ -1,8 +1,7 @@
 {
 	"InstallScripts" : 
 	[
-		"/home/violet/codes/ROPE_Framework/build/cmake_install.cmake",
-		"/home/violet/codes/ROPE_Framework/build/examples/cmake_install.cmake"
+		"/home/violet/codes/ROPE_Framework/build/cmake_install.cmake"
 	],
 	"Parallel" : false
 }

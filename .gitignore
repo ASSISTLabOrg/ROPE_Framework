@@ -1,8 +1,10 @@
 __pycache__
 *.ipynb
 .ipynb_checkpoints
-_data
-*.pkl
-*.zip
+build/
+data/
 *.csv
-*.nzp
+dist/
+ort-libs/
+external/
+exported/

@@ -1,144 +1,160 @@
-cmake_minimum_required(VERSION 3.15)
-project(physics_prediction VERSION 2.0.0 LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.18)
+project(ROPE VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Options
-option(BUILD_SHARED_LIBS "Build shared libraries" ON)
-option(BUILD_EXAMPLES "Build example programs" ON)
-option(USE_CUDA "Enable CUDA support" OFF)
-option(BUILD_TESTS "Build tests" OFF)
+# ---------------------------------------------------------------------------
+# ONNX Runtime
+# Defaults to the bundled copy in external/onnxruntime.
+# Override with -DONNXRUNTIME_ROOT=/path/to/other/onnxruntime if needed.
+# ---------------------------------------------------------------------------
+set(ONNXRUNTIME_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/external/onnxruntime"
+    CACHE PATH "Root of the ONNX Runtime source/installation")
 
-# Find ONNX Runtime
-# Priority: bundled external/ → ONNXRUNTIME_ROOT env var → system paths
-set(ONNXRUNTIME_EXTERNAL_DIR ${CMAKE_SOURCE_DIR}/external/onnxruntime)
+# Support both a prebuilt layout (include/ + lib/) and a source-build layout
+# where the shared library lives in build/Linux/RelWithDebInfo/.
+find_path(ORT_INC onnxruntime_cxx_api.h
+    PATHS "${ONNXRUNTIME_ROOT}/include"
+          "${ONNXRUNTIME_ROOT}/include/onnxruntime/core/session"
+          /usr/include /usr/local/include
+    NO_DEFAULT_PATH)
+find_library(ORT_LIB NAMES onnxruntime
+    HINTS "${ONNXRUNTIME_ROOT}/lib"
+          "${ONNXRUNTIME_ROOT}/build/Linux/RelWithDebInfo"
+          "${ONNXRUNTIME_ROOT}/build/Linux/Release"
+    PATHS /usr/lib /usr/local/lib
+    NO_DEFAULT_PATH)
 
-if(EXISTS ${ONNXRUNTIME_EXTERNAL_DIR})
-    message(STATUS "Using bundled ONNX Runtime from external/")
-    set(ONNXRUNTIME_INCLUDE_DIR ${ONNXRUNTIME_EXTERNAL_DIR}/include)
-    find_library(ONNXRUNTIME_LIB
-        NAMES onnxruntime
-        PATHS ${ONNXRUNTIME_EXTERNAL_DIR}/lib
-        NO_DEFAULT_PATH
-    )
-elseif(DEFINED ENV{ONNXRUNTIME_ROOT})
-    message(STATUS "Using ONNX Runtime from ONNXRUNTIME_ROOT env var")
-    set(ONNXRUNTIME_INCLUDE_DIR $ENV{ONNXRUNTIME_ROOT}/include)
-    if(WIN32)
-        set(ONNXRUNTIME_LIB $ENV{ONNXRUNTIME_ROOT}/lib/onnxruntime.lib)
-    else()
-        find_library(ONNXRUNTIME_LIB
-            NAMES onnxruntime
-            PATHS $ENV{ONNXRUNTIME_ROOT}/lib
-            NO_DEFAULT_PATH
-        )
+if(NOT ORT_INC OR NOT ORT_LIB)
+    message(FATAL_ERROR
+        "ONNX Runtime not found at ${ONNXRUNTIME_ROOT}.\n"
+        "  Ensure external/onnxruntime/include and external/onnxruntime/lib exist,\n"
+        "  or set -DONNXRUNTIME_ROOT=/path/to/onnxruntime on the cmake command line.")
+endif()
+message(STATUS "ONNX Runtime include: ${ORT_INC}")
+message(STATUS "ONNX Runtime library: ${ORT_LIB}")
+
+# ---------------------------------------------------------------------------
+# LibTorch (TorchScript backend for the COAE decoder) — optional
+# Set -DLIBTORCH_ROOT=/path/to/libtorch on the cmake command line, or install
+# PyTorch into the active conda environment (find_package will locate it via
+# Python's site-packages).
+# ---------------------------------------------------------------------------
+option(ROPE_USE_LIBTORCH "Build the TorchScript / LibTorch backend" ON)
+set(LIBTORCH_ROOT "" CACHE PATH "Root of the LibTorch distribution")
+if(ROPE_USE_LIBTORCH)
+    if(LIBTORCH_ROOT)
+        # Set Torch_DIR explicitly so find_package ignores conda/system paths
+        # and goes straight to the requested libtorch installation.
+        set(Torch_DIR "${LIBTORCH_ROOT}/share/cmake/Torch"
+            CACHE PATH "Path to TorchConfig.cmake" FORCE)
     endif()
+    find_package(Torch REQUIRED)
+    # LibTorch may set a CXX ABI flag that must propagate to every TU.
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+    message(STATUS "LibTorch include dirs : ${TORCH_INCLUDE_DIRS}")
+    message(STATUS "LibTorch libraries    : ${TORCH_LIBRARIES}")
 else()
-    message(STATUS "Searching for ONNX Runtime in system paths...")
-    find_path(ONNXRUNTIME_INCLUDE_DIR
-        NAMES onnxruntime_cxx_api.h
-        PATHS
-            /usr/include/onnxruntime
-            /usr/local/include/onnxruntime
-    )
-    find_library(ONNXRUNTIME_LIB
-        NAMES onnxruntime
-        PATHS
-            /usr/lib
-            /usr/local/lib
-    )
+    message(STATUS "LibTorch backend disabled (ROPE_USE_LIBTORCH=OFF)")
 endif()
 
-if(NOT ONNXRUNTIME_INCLUDE_DIR OR NOT ONNXRUNTIME_LIB)
-    message(FATAL_ERROR "ONNX Runtime not found! Please set ONNXRUNTIME_ROOT or install ONNX Runtime.")
-else()
-    message(STATUS "Found ONNX Runtime:")
-    message(STATUS "  Include: ${ONNXRUNTIME_INCLUDE_DIR}")
-    message(STATUS "  Library: ${ONNXRUNTIME_LIB}")
-endif()
+# ---------------------------------------------------------------------------
+# oneDNN / DNNL execution provider — optional
+# Requires an ONNX Runtime source build compiled with --use_dnnl.
+# ---------------------------------------------------------------------------
+option(ROPE_USE_DNNL "Enable oneDNN/DNNL execution provider for ONNX Runtime" OFF)
 
-# Main library - split into multiple source files
-add_library(physics_prediction
-    src/prediction_model.cpp
-    src/onnx_model.cpp
-    src/physics_pipeline.cpp
-    src/utilities.cpp
+# ---------------------------------------------------------------------------
+# Build
+# ---------------------------------------------------------------------------
+add_library(rope_core STATIC
+    src/rope.cpp
+    src/interpolator.cpp
 )
 
-target_include_directories(physics_prediction
+target_include_directories(rope_core
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include>
-    PRIVATE
-        ${ONNXRUNTIME_INCLUDE_DIR}
+        $<BUILD_INTERFACE:${ORT_INC}>
 )
 
-target_link_libraries(physics_prediction
-    PRIVATE
-        ${ONNXRUNTIME_LIB}
-)
+target_link_libraries(rope_core PUBLIC ${ORT_LIB})
 
-if(USE_CUDA)
-    target_compile_definitions(physics_prediction PRIVATE USE_CUDA)
+if(ROPE_USE_LIBTORCH)
+    target_link_libraries(rope_core PUBLIC ${TORCH_LIBRARIES})
+    target_include_directories(rope_core PUBLIC ${TORCH_INCLUDE_DIRS})
+    target_compile_definitions(rope_core PUBLIC ROPE_USE_LIBTORCH)
 endif()
 
-# Platform-specific settings
-if(WIN32)
-    target_compile_definitions(physics_prediction PRIVATE _WIN32)
+if(ROPE_USE_DNNL)
+    target_compile_definitions(rope_core PUBLIC ROPE_USE_DNNL)
+    target_include_directories(rope_core PUBLIC
+        $<BUILD_INTERFACE:${ORT_INC}/../providers/dnnl>
+    )
 endif()
 
-if(UNIX AND NOT APPLE)
-    target_link_libraries(physics_prediction PRIVATE pthread)
+# Optional: enable OpenMP for parallel base-model rollouts
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+    target_link_libraries(rope_core PUBLIC OpenMP::OpenMP_CXX)
+    target_compile_definitions(rope_core PUBLIC ROPE_USE_OPENMP)
+    message(STATUS "OpenMP enabled — base-model rollouts run in parallel")
+else()
+    message(STATUS "OpenMP not found — base-model rollouts run sequentially")
 endif()
 
-# Examples
-if(BUILD_EXAMPLES)
-    add_subdirectory(examples)
+# Demo executable
+add_executable(rope_demo src/driver.cpp)
+target_link_libraries(rope_demo PRIVATE rope_core)
+
+# Ensure the runtime linker can find libdnnl.so next to libonnxruntime.so
+# (only needed when using a source build rather than an installed package).
+get_filename_component(ORT_LIB_DIR "${ORT_LIB}" DIRECTORY)
+set_target_properties(rope_demo PROPERTIES
+    BUILD_RPATH "${ORT_LIB_DIR};${ORT_LIB_DIR}/dnnl/install/lib"
+    INSTALL_RPATH "${ORT_LIB_DIR};${ORT_LIB_DIR}/dnnl/install/lib"
+)
+
+# Compiler warnings
+target_compile_options(rope_core PRIVATE
+    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
+    $<$<CXX_COMPILER_ID:MSVC>:/W4>
+)
+
+# ---------------------------------------------------------------------------
+# Build type defaults + profiling
+# ---------------------------------------------------------------------------
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
 endif()
 
-# Tests
-if(BUILD_TESTS)
-    add_subdirectory(tests)
+# -DENABLE_PROFILING=ON injects gprof instrumentation (-pg) into all targets.
+# Build in RelWithDebInfo or Release for meaningful results (not Debug).
+# Usage:
+#   cmake -B build -DENABLE_PROFILING=ON [-DCMAKE_BUILD_TYPE=RelWithDebInfo]
+#   cmake --build build
+#   ./build/rope_demo config/rope.conf          # generates gmon.out
+#   gprof build/rope_demo gmon.out > profile.txt
+option(ENABLE_PROFILING "Build with gprof instrumentation (-pg)" OFF)
+if(ENABLE_PROFILING)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        # Must use target_* variants — add_compile/link_options only affect
+        # targets defined *after* the call, but rope_core/rope_demo are already
+        # defined above.
+        foreach(_t rope_core rope_demo)
+            target_compile_options(${_t} PUBLIC -pg)
+            target_link_options(${_t} PUBLIC -pg)
+        endforeach()
+        message(STATUS "gprof profiling enabled (-pg)")
+    else()
+        message(WARNING "ENABLE_PROFILING is only supported with GCC/Clang; ignoring")
+    endif()
 endif()
 
-# Installation
-include(GNUInstallDirs)
-
-install(TARGETS physics_prediction
-    EXPORT physics_prediction_targets
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
-
-install(DIRECTORY include/
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-)
-
-install(EXPORT physics_prediction_targets
-    FILE physics_prediction_targets.cmake
-    NAMESPACE physics_prediction::
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/physics_prediction
-)
-
-# Generate config file
-include(CMakePackageConfigHelpers)
-configure_package_config_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/physics_prediction_config.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/physics_prediction_config.cmake
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/physics_prediction
-)
-
-write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/physics_prediction_config_version.cmake
-    VERSION ${PROJECT_VERSION}
-    COMPATIBILITY AnyNewerVersion
-)
-
-install(FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/physics_prediction_config.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/physics_prediction_config_version.cmake
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/physics_prediction
+# Release optimizations
+target_compile_options(rope_core PRIVATE
+    $<$<CONFIG:Release>:$<$<CXX_COMPILER_ID:GNU,Clang>:-O3 -march=native>>
+    $<$<CONFIG:Release>:$<$<CXX_COMPILER_ID:MSVC>:/O2>>
 )

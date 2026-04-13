@@ -1,0 +1,40 @@
+# Build artifacts
+build/
+*.o
+*.a
+gmon.out
+profile.txt
+
+# ORT submodule — the Dockerfile downloads/builds ORT independently.
+# Excluding it avoids sending ~1 GB of source to the Docker build context.
+external/
+
+# Python bytecode and Jupyter artifacts
+__pycache__/
+*.py[cod]
+*.ipynb
+.ipynb_checkpoints/
+
+# Git metadata
+.git/
+.gitmodules
+
+# Python environment files
+*.egg-info/
+dist/
+.env
+.venv/
+conda-meta/
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# Generated packaging artifacts
+dist/
+ort-libs/
+
+# Misc
+InterpDemo*.csv

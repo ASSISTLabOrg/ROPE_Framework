@@ -85,51 +85,6 @@ rebuild_cache:
 rebuild_cache/fast: rebuild_cache
 .PHONY : rebuild_cache/fast
 
-# Special rule for the target list_install_components
-list_install_components:
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Available install components are: \"Unspecified\""
-.PHONY : list_install_components
-
-# Special rule for the target list_install_components
-list_install_components/fast: list_install_components
-.PHONY : list_install_components/fast
-
-# Special rule for the target install
-install: preinstall
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Install the project..."
-	/usr/bin/cmake -P cmake_install.cmake
-.PHONY : install
-
-# Special rule for the target install
-install/fast: preinstall/fast
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Install the project..."
-	/usr/bin/cmake -P cmake_install.cmake
-.PHONY : install/fast
-
-# Special rule for the target install/local
-install/local: preinstall
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing only the local directory..."
-	/usr/bin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
-.PHONY : install/local
-
-# Special rule for the target install/local
-install/local/fast: preinstall/fast
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing only the local directory..."
-	/usr/bin/cmake -DCMAKE_INSTALL_LOCAL_ONLY=1 -P cmake_install.cmake
-.PHONY : install/local/fast
-
-# Special rule for the target install/strip
-install/strip: preinstall
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing the project stripped..."
-	/usr/bin/cmake -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
-.PHONY : install/strip
-
-# Special rule for the target install/strip
-install/strip/fast: preinstall/fast
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Installing the project stripped..."
-	/usr/bin/cmake -DCMAKE_INSTALL_DO_STRIP=1 -P cmake_install.cmake
-.PHONY : install/strip/fast
-
 # The main all target
 all: cmake_check_build_system
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/violet/codes/ROPE_Framework/build/CMakeFiles /home/violet/codes/ROPE_Framework/build//CMakeFiles/progress.marks
@@ -162,152 +117,102 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named physics_prediction
+# Target rules for targets named rope_core
 
 # Build rule for target.
-physics_prediction: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 physics_prediction
-.PHONY : physics_prediction
+rope_core: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 rope_core
+.PHONY : rope_core
 
 # fast build rule for target.
-physics_prediction/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/physics_prediction.dir/build.make CMakeFiles/physics_prediction.dir/build
-.PHONY : physics_prediction/fast
+rope_core/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rope_core.dir/build.make CMakeFiles/rope_core.dir/build
+.PHONY : rope_core/fast
 
 #=============================================================================
-# Target rules for targets named drivers_predictor_decoder
+# Target rules for targets named rope_demo
 
 # Build rule for target.
-drivers_predictor_decoder: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 drivers_predictor_decoder
-.PHONY : drivers_predictor_decoder
+rope_demo: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 rope_demo
+.PHONY : rope_demo
 
 # fast build rule for target.
-drivers_predictor_decoder/fast:
-	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/drivers_predictor_decoder.dir/build.make examples/CMakeFiles/drivers_predictor_decoder.dir/build
-.PHONY : drivers_predictor_decoder/fast
+rope_demo/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rope_demo.dir/build.make CMakeFiles/rope_demo.dir/build
+.PHONY : rope_demo/fast
 
-#=============================================================================
-# Target rules for targets named custom_models
-
-# Build rule for target.
-custom_models: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 custom_models
-.PHONY : custom_models
-
-# fast build rule for target.
-custom_models/fast:
-	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/custom_models.dir/build.make examples/CMakeFiles/custom_models.dir/build
-.PHONY : custom_models/fast
-
-#=============================================================================
-# Target rules for targets named forecast
-
-# Build rule for target.
-forecast: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 forecast
-.PHONY : forecast
-
-# fast build rule for target.
-forecast/fast:
-	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/forecast.dir/build.make examples/CMakeFiles/forecast.dir/build
-.PHONY : forecast/fast
-
-src/onnx_model.o: src/onnx_model.cpp.o
-.PHONY : src/onnx_model.o
+src/driver.o: src/driver.cpp.o
+.PHONY : src/driver.o
 
 # target to build an object file
-src/onnx_model.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/physics_prediction.dir/build.make CMakeFiles/physics_prediction.dir/src/onnx_model.cpp.o
-.PHONY : src/onnx_model.cpp.o
+src/driver.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rope_demo.dir/build.make CMakeFiles/rope_demo.dir/src/driver.cpp.o
+.PHONY : src/driver.cpp.o
 
-src/onnx_model.i: src/onnx_model.cpp.i
-.PHONY : src/onnx_model.i
+src/driver.i: src/driver.cpp.i
+.PHONY : src/driver.i
 
 # target to preprocess a source file
-src/onnx_model.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/physics_prediction.dir/build.make CMakeFiles/physics_prediction.dir/src/onnx_model.cpp.i
-.PHONY : src/onnx_model.cpp.i
+src/driver.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rope_demo.dir/build.make CMakeFiles/rope_demo.dir/src/driver.cpp.i
+.PHONY : src/driver.cpp.i
 
-src/onnx_model.s: src/onnx_model.cpp.s
-.PHONY : src/onnx_model.s
+src/driver.s: src/driver.cpp.s
+.PHONY : src/driver.s
 
 # target to generate assembly for a file
-src/onnx_model.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/physics_prediction.dir/build.make CMakeFiles/physics_prediction.dir/src/onnx_model.cpp.s
-.PHONY : src/onnx_model.cpp.s
+src/driver.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rope_demo.dir/build.make CMakeFiles/rope_demo.dir/src/driver.cpp.s
+.PHONY : src/driver.cpp.s
 
-src/physics_pipeline.o: src/physics_pipeline.cpp.o
-.PHONY : src/physics_pipeline.o
+src/interpolator.o: src/interpolator.cpp.o
+.PHONY : src/interpolator.o
 
 # target to build an object file
-src/physics_pipeline.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/physics_prediction.dir/build.make CMakeFiles/physics_prediction.dir/src/physics_pipeline.cpp.o
-.PHONY : src/physics_pipeline.cpp.o
+src/interpolator.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rope_core.dir/build.make CMakeFiles/rope_core.dir/src/interpolator.cpp.o
+.PHONY : src/interpolator.cpp.o
 
-src/physics_pipeline.i: src/physics_pipeline.cpp.i
-.PHONY : src/physics_pipeline.i
+src/interpolator.i: src/interpolator.cpp.i
+.PHONY : src/interpolator.i
 
 # target to preprocess a source file
-src/physics_pipeline.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/physics_prediction.dir/build.make CMakeFiles/physics_prediction.dir/src/physics_pipeline.cpp.i
-.PHONY : src/physics_pipeline.cpp.i
+src/interpolator.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rope_core.dir/build.make CMakeFiles/rope_core.dir/src/interpolator.cpp.i
+.PHONY : src/interpolator.cpp.i
 
-src/physics_pipeline.s: src/physics_pipeline.cpp.s
-.PHONY : src/physics_pipeline.s
+src/interpolator.s: src/interpolator.cpp.s
+.PHONY : src/interpolator.s
 
 # target to generate assembly for a file
-src/physics_pipeline.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/physics_prediction.dir/build.make CMakeFiles/physics_prediction.dir/src/physics_pipeline.cpp.s
-.PHONY : src/physics_pipeline.cpp.s
+src/interpolator.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rope_core.dir/build.make CMakeFiles/rope_core.dir/src/interpolator.cpp.s
+.PHONY : src/interpolator.cpp.s
 
-src/prediction_model.o: src/prediction_model.cpp.o
-.PHONY : src/prediction_model.o
+src/rope.o: src/rope.cpp.o
+.PHONY : src/rope.o
 
 # target to build an object file
-src/prediction_model.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/physics_prediction.dir/build.make CMakeFiles/physics_prediction.dir/src/prediction_model.cpp.o
-.PHONY : src/prediction_model.cpp.o
+src/rope.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rope_core.dir/build.make CMakeFiles/rope_core.dir/src/rope.cpp.o
+.PHONY : src/rope.cpp.o
 
-src/prediction_model.i: src/prediction_model.cpp.i
-.PHONY : src/prediction_model.i
-
-# target to preprocess a source file
-src/prediction_model.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/physics_prediction.dir/build.make CMakeFiles/physics_prediction.dir/src/prediction_model.cpp.i
-.PHONY : src/prediction_model.cpp.i
-
-src/prediction_model.s: src/prediction_model.cpp.s
-.PHONY : src/prediction_model.s
-
-# target to generate assembly for a file
-src/prediction_model.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/physics_prediction.dir/build.make CMakeFiles/physics_prediction.dir/src/prediction_model.cpp.s
-.PHONY : src/prediction_model.cpp.s
-
-src/utilities.o: src/utilities.cpp.o
-.PHONY : src/utilities.o
-
-# target to build an object file
-src/utilities.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/physics_prediction.dir/build.make CMakeFiles/physics_prediction.dir/src/utilities.cpp.o
-.PHONY : src/utilities.cpp.o
-
-src/utilities.i: src/utilities.cpp.i
-.PHONY : src/utilities.i
+src/rope.i: src/rope.cpp.i
+.PHONY : src/rope.i
 
 # target to preprocess a source file
-src/utilities.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/physics_prediction.dir/build.make CMakeFiles/physics_prediction.dir/src/utilities.cpp.i
-.PHONY : src/utilities.cpp.i
+src/rope.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rope_core.dir/build.make CMakeFiles/rope_core.dir/src/rope.cpp.i
+.PHONY : src/rope.cpp.i
 
-src/utilities.s: src/utilities.cpp.s
-.PHONY : src/utilities.s
+src/rope.s: src/rope.cpp.s
+.PHONY : src/rope.s
 
 # target to generate assembly for a file
-src/utilities.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/physics_prediction.dir/build.make CMakeFiles/physics_prediction.dir/src/utilities.cpp.s
-.PHONY : src/utilities.cpp.s
+src/rope.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rope_core.dir/build.make CMakeFiles/rope_core.dir/src/rope.cpp.s
+.PHONY : src/rope.cpp.s
 
 # Help Target
 help:
@@ -316,27 +221,18 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... edit_cache"
-	@echo "... install"
-	@echo "... install/local"
-	@echo "... install/strip"
-	@echo "... list_install_components"
 	@echo "... rebuild_cache"
-	@echo "... custom_models"
-	@echo "... drivers_predictor_decoder"
-	@echo "... forecast"
-	@echo "... physics_prediction"
-	@echo "... src/onnx_model.o"
-	@echo "... src/onnx_model.i"
-	@echo "... src/onnx_model.s"
-	@echo "... src/physics_pipeline.o"
-	@echo "... src/physics_pipeline.i"
-	@echo "... src/physics_pipeline.s"
-	@echo "... src/prediction_model.o"
-	@echo "... src/prediction_model.i"
-	@echo "... src/prediction_model.s"
-	@echo "... src/utilities.o"
-	@echo "... src/utilities.i"
-	@echo "... src/utilities.s"
+	@echo "... rope_core"
+	@echo "... rope_demo"
+	@echo "... src/driver.o"
+	@echo "... src/driver.i"
+	@echo "... src/driver.s"
+	@echo "... src/interpolator.o"
+	@echo "... src/interpolator.i"
+	@echo "... src/interpolator.s"
+	@echo "... src/rope.o"
+	@echo "... src/rope.i"
+	@echo "... src/rope.s"
 .PHONY : help
 
 

@@ -63,176 +63,87 @@ CMAKE_BINARY_DIR = /home/violet/codes/ROPE_Framework/build
 # Directory level rules for the build root directory
 
 # The main recursive "all" target.
-all: CMakeFiles/physics_prediction.dir/all
-all: examples/all
+all: CMakeFiles/rope_core.dir/all
+all: CMakeFiles/rope_demo.dir/all
 .PHONY : all
 
 # The main recursive "codegen" target.
-codegen: CMakeFiles/physics_prediction.dir/codegen
-codegen: examples/codegen
+codegen: CMakeFiles/rope_core.dir/codegen
+codegen: CMakeFiles/rope_demo.dir/codegen
 .PHONY : codegen
 
 # The main recursive "preinstall" target.
-preinstall: examples/preinstall
+preinstall:
 .PHONY : preinstall
 
 # The main recursive "clean" target.
-clean: CMakeFiles/physics_prediction.dir/clean
-clean: examples/clean
+clean: CMakeFiles/rope_core.dir/clean
+clean: CMakeFiles/rope_demo.dir/clean
 .PHONY : clean
 
 #=============================================================================
-# Directory level rules for directory examples
-
-# Recursive "all" directory target.
-examples/all: examples/CMakeFiles/drivers_predictor_decoder.dir/all
-examples/all: examples/CMakeFiles/custom_models.dir/all
-examples/all: examples/CMakeFiles/forecast.dir/all
-.PHONY : examples/all
-
-# Recursive "codegen" directory target.
-examples/codegen: examples/CMakeFiles/drivers_predictor_decoder.dir/codegen
-examples/codegen: examples/CMakeFiles/custom_models.dir/codegen
-examples/codegen: examples/CMakeFiles/forecast.dir/codegen
-.PHONY : examples/codegen
-
-# Recursive "preinstall" directory target.
-examples/preinstall:
-.PHONY : examples/preinstall
-
-# Recursive "clean" directory target.
-examples/clean: examples/CMakeFiles/drivers_predictor_decoder.dir/clean
-examples/clean: examples/CMakeFiles/custom_models.dir/clean
-examples/clean: examples/CMakeFiles/forecast.dir/clean
-.PHONY : examples/clean
-
-#=============================================================================
-# Target rules for target CMakeFiles/physics_prediction.dir
+# Target rules for target CMakeFiles/rope_core.dir
 
 # All Build rule for target.
-CMakeFiles/physics_prediction.dir/all:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/physics_prediction.dir/build.make CMakeFiles/physics_prediction.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/physics_prediction.dir/build.make CMakeFiles/physics_prediction.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/violet/codes/ROPE_Framework/build/CMakeFiles --progress-num=7,8,9,10,11 "Built target physics_prediction"
-.PHONY : CMakeFiles/physics_prediction.dir/all
+CMakeFiles/rope_core.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rope_core.dir/build.make CMakeFiles/rope_core.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rope_core.dir/build.make CMakeFiles/rope_core.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/violet/codes/ROPE_Framework/build/CMakeFiles --progress-num=1,2,3 "Built target rope_core"
+.PHONY : CMakeFiles/rope_core.dir/all
 
 # Build rule for subdir invocation for target.
-CMakeFiles/physics_prediction.dir/rule: cmake_check_build_system
+CMakeFiles/rope_core.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/violet/codes/ROPE_Framework/build/CMakeFiles 3
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/rope_core.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/violet/codes/ROPE_Framework/build/CMakeFiles 0
+.PHONY : CMakeFiles/rope_core.dir/rule
+
+# Convenience name for target.
+rope_core: CMakeFiles/rope_core.dir/rule
+.PHONY : rope_core
+
+# codegen rule for target.
+CMakeFiles/rope_core.dir/codegen:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rope_core.dir/build.make CMakeFiles/rope_core.dir/codegen
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/violet/codes/ROPE_Framework/build/CMakeFiles --progress-num=1,2,3 "Finished codegen for target rope_core"
+.PHONY : CMakeFiles/rope_core.dir/codegen
+
+# clean rule for target.
+CMakeFiles/rope_core.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rope_core.dir/build.make CMakeFiles/rope_core.dir/clean
+.PHONY : CMakeFiles/rope_core.dir/clean
+
+#=============================================================================
+# Target rules for target CMakeFiles/rope_demo.dir
+
+# All Build rule for target.
+CMakeFiles/rope_demo.dir/all: CMakeFiles/rope_core.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rope_demo.dir/build.make CMakeFiles/rope_demo.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rope_demo.dir/build.make CMakeFiles/rope_demo.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/violet/codes/ROPE_Framework/build/CMakeFiles --progress-num=4,5 "Built target rope_demo"
+.PHONY : CMakeFiles/rope_demo.dir/all
+
+# Build rule for subdir invocation for target.
+CMakeFiles/rope_demo.dir/rule: cmake_check_build_system
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/violet/codes/ROPE_Framework/build/CMakeFiles 5
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/physics_prediction.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/rope_demo.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/violet/codes/ROPE_Framework/build/CMakeFiles 0
-.PHONY : CMakeFiles/physics_prediction.dir/rule
+.PHONY : CMakeFiles/rope_demo.dir/rule
 
 # Convenience name for target.
-physics_prediction: CMakeFiles/physics_prediction.dir/rule
-.PHONY : physics_prediction
+rope_demo: CMakeFiles/rope_demo.dir/rule
+.PHONY : rope_demo
 
 # codegen rule for target.
-CMakeFiles/physics_prediction.dir/codegen:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/physics_prediction.dir/build.make CMakeFiles/physics_prediction.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/violet/codes/ROPE_Framework/build/CMakeFiles --progress-num=7,8,9,10,11 "Finished codegen for target physics_prediction"
-.PHONY : CMakeFiles/physics_prediction.dir/codegen
+CMakeFiles/rope_demo.dir/codegen:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rope_demo.dir/build.make CMakeFiles/rope_demo.dir/codegen
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/violet/codes/ROPE_Framework/build/CMakeFiles --progress-num=4,5 "Finished codegen for target rope_demo"
+.PHONY : CMakeFiles/rope_demo.dir/codegen
 
 # clean rule for target.
-CMakeFiles/physics_prediction.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/physics_prediction.dir/build.make CMakeFiles/physics_prediction.dir/clean
-.PHONY : CMakeFiles/physics_prediction.dir/clean
-
-#=============================================================================
-# Target rules for target examples/CMakeFiles/drivers_predictor_decoder.dir
-
-# All Build rule for target.
-examples/CMakeFiles/drivers_predictor_decoder.dir/all: CMakeFiles/physics_prediction.dir/all
-	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/drivers_predictor_decoder.dir/build.make examples/CMakeFiles/drivers_predictor_decoder.dir/depend
-	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/drivers_predictor_decoder.dir/build.make examples/CMakeFiles/drivers_predictor_decoder.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/violet/codes/ROPE_Framework/build/CMakeFiles --progress-num=3,4 "Built target drivers_predictor_decoder"
-.PHONY : examples/CMakeFiles/drivers_predictor_decoder.dir/all
-
-# Build rule for subdir invocation for target.
-examples/CMakeFiles/drivers_predictor_decoder.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/violet/codes/ROPE_Framework/build/CMakeFiles 7
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/drivers_predictor_decoder.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/violet/codes/ROPE_Framework/build/CMakeFiles 0
-.PHONY : examples/CMakeFiles/drivers_predictor_decoder.dir/rule
-
-# Convenience name for target.
-drivers_predictor_decoder: examples/CMakeFiles/drivers_predictor_decoder.dir/rule
-.PHONY : drivers_predictor_decoder
-
-# codegen rule for target.
-examples/CMakeFiles/drivers_predictor_decoder.dir/codegen:
-	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/drivers_predictor_decoder.dir/build.make examples/CMakeFiles/drivers_predictor_decoder.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/violet/codes/ROPE_Framework/build/CMakeFiles --progress-num=3,4 "Finished codegen for target drivers_predictor_decoder"
-.PHONY : examples/CMakeFiles/drivers_predictor_decoder.dir/codegen
-
-# clean rule for target.
-examples/CMakeFiles/drivers_predictor_decoder.dir/clean:
-	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/drivers_predictor_decoder.dir/build.make examples/CMakeFiles/drivers_predictor_decoder.dir/clean
-.PHONY : examples/CMakeFiles/drivers_predictor_decoder.dir/clean
-
-#=============================================================================
-# Target rules for target examples/CMakeFiles/custom_models.dir
-
-# All Build rule for target.
-examples/CMakeFiles/custom_models.dir/all: CMakeFiles/physics_prediction.dir/all
-	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/custom_models.dir/build.make examples/CMakeFiles/custom_models.dir/depend
-	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/custom_models.dir/build.make examples/CMakeFiles/custom_models.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/violet/codes/ROPE_Framework/build/CMakeFiles --progress-num=1,2 "Built target custom_models"
-.PHONY : examples/CMakeFiles/custom_models.dir/all
-
-# Build rule for subdir invocation for target.
-examples/CMakeFiles/custom_models.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/violet/codes/ROPE_Framework/build/CMakeFiles 7
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/custom_models.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/violet/codes/ROPE_Framework/build/CMakeFiles 0
-.PHONY : examples/CMakeFiles/custom_models.dir/rule
-
-# Convenience name for target.
-custom_models: examples/CMakeFiles/custom_models.dir/rule
-.PHONY : custom_models
-
-# codegen rule for target.
-examples/CMakeFiles/custom_models.dir/codegen:
-	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/custom_models.dir/build.make examples/CMakeFiles/custom_models.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/violet/codes/ROPE_Framework/build/CMakeFiles --progress-num=1,2 "Finished codegen for target custom_models"
-.PHONY : examples/CMakeFiles/custom_models.dir/codegen
-
-# clean rule for target.
-examples/CMakeFiles/custom_models.dir/clean:
-	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/custom_models.dir/build.make examples/CMakeFiles/custom_models.dir/clean
-.PHONY : examples/CMakeFiles/custom_models.dir/clean
-
-#=============================================================================
-# Target rules for target examples/CMakeFiles/forecast.dir
-
-# All Build rule for target.
-examples/CMakeFiles/forecast.dir/all: CMakeFiles/physics_prediction.dir/all
-	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/forecast.dir/build.make examples/CMakeFiles/forecast.dir/depend
-	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/forecast.dir/build.make examples/CMakeFiles/forecast.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/violet/codes/ROPE_Framework/build/CMakeFiles --progress-num=5,6 "Built target forecast"
-.PHONY : examples/CMakeFiles/forecast.dir/all
-
-# Build rule for subdir invocation for target.
-examples/CMakeFiles/forecast.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/violet/codes/ROPE_Framework/build/CMakeFiles 7
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 examples/CMakeFiles/forecast.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/violet/codes/ROPE_Framework/build/CMakeFiles 0
-.PHONY : examples/CMakeFiles/forecast.dir/rule
-
-# Convenience name for target.
-forecast: examples/CMakeFiles/forecast.dir/rule
-.PHONY : forecast
-
-# codegen rule for target.
-examples/CMakeFiles/forecast.dir/codegen:
-	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/forecast.dir/build.make examples/CMakeFiles/forecast.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/violet/codes/ROPE_Framework/build/CMakeFiles --progress-num=5,6 "Finished codegen for target forecast"
-.PHONY : examples/CMakeFiles/forecast.dir/codegen
-
-# clean rule for target.
-examples/CMakeFiles/forecast.dir/clean:
-	$(MAKE) $(MAKESILENT) -f examples/CMakeFiles/forecast.dir/build.make examples/CMakeFiles/forecast.dir/clean
-.PHONY : examples/CMakeFiles/forecast.dir/clean
+CMakeFiles/rope_demo.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/rope_demo.dir/build.make CMakeFiles/rope_demo.dir/clean
+.PHONY : CMakeFiles/rope_demo.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

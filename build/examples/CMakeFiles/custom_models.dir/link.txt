@@ -1,1 +1,0 @@
-/usr/bin/c++ -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/custom_models.dir/link.d CMakeFiles/custom_models.dir/custom_models.cpp.o -o custom_models  -Wl,-rpath,/home/violet/codes/ROPE_Framework/build:/home/violet/codes/ROPE_Framework/external/onnxruntime/lib: ../libphysics_prediction.so /home/violet/codes/ROPE_Framework/external/onnxruntime/lib/libonnxruntime.so
