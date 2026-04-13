@@ -1,4 +1,0 @@
-/home/violet/codes/ROPE_Framework/build/CMakeFiles/rope_core.dir
-/home/violet/codes/ROPE_Framework/build/CMakeFiles/rope_demo.dir
-/home/violet/codes/ROPE_Framework/build/CMakeFiles/edit_cache.dir
-/home/violet/codes/ROPE_Framework/build/CMakeFiles/rebuild_cache.dir
