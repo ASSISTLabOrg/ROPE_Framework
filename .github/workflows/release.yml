@@ -1,0 +1,127 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build-linux:
+    name: Linux (x86_64, cpu)
+    runs-on: ubuntu-22.04
+    container: debian:bullseye
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: |
+          apt-get update
+          apt-get install -y cmake ninja-build gcc-10 g++-10 make ca-certificates
+      - uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: deps-linux-x64-cpu-ort1.25.0-torch2.7.0
+      - run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=gcc-10 \
+            -DCMAKE_CXX_COMPILER=g++-10 \
+            -DROPE_DOWNLOAD_DEPS=ON \
+            -DROPE_HARDWARE=cpu \
+            -DROPE_USE_LIBTORCH=OFF \
+            -DROPE_PACKAGE_SUFFIX=linux-x86_64-cpu
+      - run: cmake --build build --parallel
+      - run: cpack --config build/CPackConfig.cmake
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rope-linux-x86_64-cpu
+          path: rope_framework-*.tar.gz
+
+  build-macos-arm64:
+    name: macOS (arm64, cpu)
+    runs-on: macos-14
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "12.0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: deps-macos-arm64-cpu-ort1.25.0-torch2.7.0
+      - run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DROPE_DOWNLOAD_DEPS=ON \
+            -DROPE_HARDWARE=cpu \
+            -DROPE_USE_LIBTORCH=OFF \
+            -DROPE_PACKAGE_SUFFIX=macos-arm64-cpu
+      - run: cmake --build build --parallel
+      - run: cpack --config build/CPackConfig.cmake
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rope-macos-arm64-cpu
+          path: rope_framework-*.tar.gz
+
+  build-macos-x86_64:
+    name: macOS (x86_64, cpu)
+    runs-on: macos-13
+    env:
+      MACOSX_DEPLOYMENT_TARGET: "12.0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: deps-macos-x86_64-cpu-ort1.25.0-torch2.7.0
+      - run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DROPE_DOWNLOAD_DEPS=ON \
+            -DROPE_HARDWARE=cpu \
+            -DROPE_USE_LIBTORCH=OFF \
+            -DROPE_PACKAGE_SUFFIX=macos-x86_64-cpu
+      - run: cmake --build build --parallel
+      - run: cpack --config build/CPackConfig.cmake
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rope-macos-x86_64-cpu
+          path: rope_framework-*.tar.gz
+
+  build-windows:
+    name: Windows (x64, cpu)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: deps-windows-x64-cpu-ort1.25.0-torch2.7.0
+      - run: |
+          cmake -B build `
+            -G "Visual Studio 17 2022" -A x64 `
+            -DROPE_DOWNLOAD_DEPS=ON `
+            -DROPE_HARDWARE=cpu `
+            -DROPE_USE_LIBTORCH=OFF `
+            -DROPE_PACKAGE_SUFFIX=windows-x64-cpu
+      - run: cmake --build build --config Release --parallel
+      - run: cpack --config build/CPackConfig.cmake -C Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rope-windows-x64-cpu
+          path: rope_framework-*.zip
+
+  publish:
+    name: Publish GitHub Release
+    needs: [build-linux, build-macos-arm64, build-macos-x86_64, build-windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: dist/
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/**
+          generate_release_notes: true
