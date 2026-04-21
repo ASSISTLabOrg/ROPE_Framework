@@ -5,3 +5,5 @@ dist/
 ort-libs/
 external/
 models/
+*.gz
+*.zip

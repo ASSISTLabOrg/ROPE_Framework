@@ -21,7 +21,7 @@ namespace rope::forecast {
 
 namespace detail {
 inline Ort::Env& ort_env() {
-    static Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "rope_forecast");
+    static Ort::Env env(ORT_LOGGING_LEVEL_ERROR, "rope_forecast");
     return env;
 }
 inline Ort::MemoryInfo& cpu_mem_info() {
@@ -40,6 +40,7 @@ public:
         : name_(path)
     {
         Ort::SessionOptions opts;
+        opts.SetLogSeverityLevel(3);  // suppress WARNING-level noise (e.g. dynamic shape hints)
         opts.SetIntraOpNumThreads(intra_op_threads);
         opts.SetInterOpNumThreads(inter_op_threads);
         opts.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
