@@ -16,7 +16,7 @@ jobs:
         run: |
           apt-get update
           apt-get install -y ninja-build gcc-10 g++-10 make ca-certificates python3-pip
-          pip3 install --quiet "cmake>=4.2"
+          pip3 install --quiet --break-system-packages "cmake>=4.2"
       - uses: actions/cache@v4
         with:
           path: build/_deps
@@ -45,7 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install CMake 4.x
-        run: pip3 install --quiet "cmake>=4.2"
+        run: pip3 install --quiet --break-system-packages "cmake>=4.2"
       - uses: actions/cache@v4
         with:
           path: build/_deps
@@ -72,7 +72,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install CMake 4.x
-        run: pip3 install --quiet "cmake>=4.2"
+        run: pip3 install --quiet --break-system-packages "cmake>=4.2"
       - uses: actions/cache@v4
         with:
           path: build/_deps
@@ -101,7 +101,7 @@ jobs:
         run: |
           apt-get update
           apt-get install -y ninja-build gcc-10 g++-10 make ca-certificates python3-pip
-          pip3 install --quiet "cmake>=4.2"
+          pip3 install --quiet --break-system-packages "cmake>=4.2"
       - uses: actions/cache@v4
         with:
           path: build/_deps
@@ -122,53 +122,13 @@ jobs:
           name: rope-linux-x86_64-cuda12
           path: rope_framework-*.tar.gz
 
-  build-linux-rocm6:
-    name: Linux (x86_64, rocm6)
-    runs-on: ubuntu-22.04
-    container: debian:bullseye
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install build tools
-        run: |
-          apt-get update
-          apt-get install -y ninja-build gcc-10 g++-10 make ca-certificates wget python3-pip unzip
-          pip3 install --quiet "cmake>=4.2"
-      - name: Acquire ORT ROCm libs
-        run: |
-          wget -qO /tmp/ort-cpu.tgz \
-            https://github.com/microsoft/onnxruntime/releases/download/v1.25.0/onnxruntime-linux-x64-1.25.0.tgz
-          mkdir -p /opt/ort-rocm
-          tar -xzf /tmp/ort-cpu.tgz -C /opt/ort-rocm --strip-components=1
-
-          pip3 install --quiet --upgrade pip
-          pip3 download --no-deps "onnxruntime-rocm==1.25.0" -d /tmp/rocm-whl
-          unzip -q /tmp/rocm-whl/onnxruntime_rocm-*.whl -d /tmp/rocm-unpack
-          find /tmp/rocm-unpack -name 'libonnxruntime*.so*' \
-            -exec cp -a {} /opt/ort-rocm/lib/ \;
-      - run: |
-          cmake -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER=gcc-10 \
-            -DCMAKE_CXX_COMPILER=g++-10 \
-            -DROPE_HARDWARE=rocm6 \
-            -DROPE_USE_LIBTORCH=OFF \
-            -DORT_INC=/opt/ort-rocm/include \
-            -DORT_LIB=/opt/ort-rocm/lib/libonnxruntime.so \
-            -DROPE_PACKAGE_SUFFIX=linux-x86_64-rocm6
-      - run: cmake --build build --parallel
-      - run: cpack --config build/CPackConfig.cmake
-      - uses: actions/upload-artifact@v4
-        with:
-          name: rope-linux-x86_64-rocm6
-          path: rope_framework-*.tar.gz
-
   build-windows:
     name: Windows (x64, cpu)
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
       - name: Install CMake 4.x
-        run: pip install --quiet "cmake>=4.2"
+        run: pip install --quiet --break-system-packages "cmake>=4.2"
       - uses: actions/cache@v4
         with:
           path: build/_deps
@@ -189,7 +149,7 @@ jobs:
 
   publish:
     name: Publish GitHub Release
-    needs: [build-linux, build-linux-cuda12, build-linux-rocm6, build-macos-arm64, build-macos-x86_64, build-windows]
+    needs: [build-linux, build-linux-cuda12, build-macos-arm64, build-macos-x86_64, build-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -31,15 +31,15 @@ include(FetchContent)
 
 FetchContent_Declare(
     nlohmann_json
-    GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG        v3.11.3
-    GIT_SHALLOW    TRUE
+    URL      https://github.com/nlohmann/json/archive/refs/tags/v3.11.3.tar.gz
+    URL_HASH SHA256=0d8ef5af7f9794e3263480193c491549b2ba6cc74bb018906202ada498a79406
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 FetchContent_Declare(
     CLI11
-    GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
-    GIT_TAG        v2.4.2
-    GIT_SHALLOW    TRUE
+    URL      https://github.com/CLIUtils/CLI11/archive/refs/tags/v2.4.2.tar.gz
+    URL_HASH SHA256=f2d893a65c3b1324c50d4e682c0cdc021dd0477ae2c048544f39eed6654b699a
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 FetchContent_MakeAvailable(nlohmann_json CLI11)
 
