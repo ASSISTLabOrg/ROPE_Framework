@@ -8,7 +8,6 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
-#include <format>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -42,7 +41,18 @@ inline TimePoint parse_datetime(std::string_view sv) {
 inline std::string format_iso(TimePoint tp) {
     using namespace std::chrono;
     auto sys_tp = sys_seconds{seconds{tp}};
-    return std::format("{:%Y-%m-%dT%H:%M:%S}", sys_tp);
+    auto dp     = floor<days>(sys_tp);
+    year_month_day ymd{dp};
+    hh_mm_ss<seconds> hms{sys_tp - dp};
+    char buf[20];
+    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02dT%02d:%02d:%02d",
+        static_cast<int>(ymd.year()),
+        static_cast<unsigned>(ymd.month()),
+        static_cast<unsigned>(ymd.day()),
+        static_cast<int>(hms.hours().count()),
+        static_cast<int>(hms.minutes().count()),
+        static_cast<int>(hms.seconds().count()));
+    return buf;
 }
 
 // Floor to the nearest whole hour.

@@ -4,6 +4,7 @@
 // Include only in translation units that construct or directly use OnnxModel.
 // Everything else goes through IModel / make_model().
 
+#include <filesystem>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
@@ -61,7 +62,7 @@ public:
 #endif
 
         session_ = std::make_unique<Ort::Session>(
-            detail::ort_env(), path.c_str(), opts);
+            detail::ort_env(), std::filesystem::path(path).c_str(), opts);
 
         Ort::AllocatorWithDefaultOptions alloc;
         size_t n_in  = session_->GetInputCount();
