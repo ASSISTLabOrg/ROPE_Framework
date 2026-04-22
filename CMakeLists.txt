@@ -300,7 +300,9 @@ if(Torch_FOUND)
 endif()
 
 # Model artifacts
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/models/exported/" DESTINATION models/exported)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/exported")
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/models/exported/" DESTINATION models/exported)
+endif()
 
 # Optional override — point -DROPE_MODELS_DIR= at a different exported dir
 set(ROPE_MODELS_DIR "" CACHE PATH
@@ -310,9 +312,12 @@ if(ROPE_MODELS_DIR AND EXISTS "${ROPE_MODELS_DIR}")
 endif()
 
 # Data files (IC table, space weather CSV, stats tensors)
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/data/" DESTINATION data)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/data")
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/data/" DESTINATION data)
+endif()
 
 # Python demo
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/demo")
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/demo/" DESTINATION demo
     PATTERN ".git"            EXCLUDE
     PATTERN "__pycache__"     EXCLUDE
@@ -320,6 +325,7 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/demo/" DESTINATION demo
     PATTERN "*.pkl"           EXCLUDE
     PATTERN "*.egg-info"      EXCLUDE
     PATTERN "output"          EXCLUDE)
+endif()
 
 # ---------------------------------------------------------------------------
 # CPack

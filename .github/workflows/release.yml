@@ -9,13 +9,13 @@ jobs:
   build-linux:
     name: Linux (x86_64, cpu)
     runs-on: ubuntu-22.04
-    container: debian:bullseye
+    container: debian:bookworm
     steps:
       - uses: actions/checkout@v4
       - name: Install build tools
         run: |
           apt-get update
-          apt-get install -y ninja-build gcc-10 g++-10 make ca-certificates python3-pip
+          apt-get install -y ninja-build gcc-12 g++-12 make ca-certificates python3-pip
           pip3 install --quiet "cmake>=4.2"
       - uses: actions/cache@v4
         with:
@@ -24,8 +24,8 @@ jobs:
       - run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER=gcc-10 \
-            -DCMAKE_CXX_COMPILER=g++-10 \
+            -DCMAKE_C_COMPILER=gcc-12 \
+            -DCMAKE_CXX_COMPILER=g++-12 \
             -DROPE_DOWNLOAD_DEPS=ON \
             -DROPE_HARDWARE=cpu \
             -DROPE_USE_LIBTORCH=OFF \
@@ -67,13 +67,13 @@ jobs:
   build-linux-cuda12:
     name: Linux (x86_64, cuda12)
     runs-on: ubuntu-22.04
-    container: debian:bullseye
+    container: debian:bookworm
     steps:
       - uses: actions/checkout@v4
       - name: Install build tools
         run: |
           apt-get update
-          apt-get install -y ninja-build gcc-10 g++-10 make ca-certificates python3-pip
+          apt-get install -y ninja-build gcc-12 g++-12 make ca-certificates python3-pip
           pip3 install --quiet "cmake>=4.2"
       - uses: actions/cache@v4
         with:
@@ -82,8 +82,8 @@ jobs:
       - run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER=gcc-10 \
-            -DCMAKE_CXX_COMPILER=g++-10 \
+            -DCMAKE_C_COMPILER=gcc-12 \
+            -DCMAKE_CXX_COMPILER=g++-12 \
             -DROPE_DOWNLOAD_DEPS=ON \
             -DROPE_HARDWARE=cuda12 \
             -DROPE_USE_LIBTORCH=OFF \
@@ -136,3 +136,14 @@ jobs:
         with:
           files: dist/**
           generate_release_notes: true
+          body: |
+            ## Required assets
+
+            The following directories are not included in the release archives and must be downloaded separately:
+
+            - `models/exported/` — ONNX model artifacts
+            - `data/` — space weather database, IC table, and normalisation statistics
+
+            **Download:** [Google Drive](https://drive.google.com/placeholder)
+
+            Place both folders alongside the extracted archive before running the server.
