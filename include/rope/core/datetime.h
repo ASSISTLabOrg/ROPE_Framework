@@ -44,7 +44,7 @@ inline std::string format_iso(TimePoint tp) {
     auto dp     = floor<days>(sys_tp);
     year_month_day ymd{dp};
     hh_mm_ss<seconds> hms{sys_tp - dp};
-    char buf[20];
+    char buf[32];
     std::snprintf(buf, sizeof(buf), "%04d-%02d-%02dT%02d:%02d:%02d",
         static_cast<int>(ymd.year()),
         static_cast<unsigned>(ymd.month()),

@@ -37,6 +37,27 @@ namespace rope::forecast {
 
 namespace fs = std::filesystem;
 
+// Cholesky-Banachiewicz: factorise a k×k SPD matrix A (row-major) in-place,
+// leaving the lower triangle of L in A.  Returns false if A is not SPD.
+static bool cholesky_inplace(float* a, int k) {
+    for (int i = 0; i < k; ++i) {
+        for (int j = 0; j <= i; ++j) {
+            float s = a[i * k + j];
+            for (int r = 0; r < j; ++r)
+                s -= a[i * k + r] * a[j * k + r];
+            if (i == j) {
+                if (s <= 0.0f) return false;
+                a[i * k + j] = std::sqrt(s);
+            } else {
+                a[i * k + j] = s / a[j * k + j];
+            }
+        }
+        for (int j = i + 1; j < k; ++j)
+            a[i * k + j] = 0.0f;
+    }
+    return true;
+}
+
 // ---------------------------------------------------------------------------
 // Helper: join a directory with a filename.
 // ---------------------------------------------------------------------------
@@ -194,50 +215,126 @@ public:
         std::vector<float>   meta_out =
             meta_model_->infer(meta_in, meta_in_shape, meta_out_shape);
 
-        // meta_out = [mean(T*K) | std(T*K)]
+        // meta_out = [mean(T*K) | std(T*K)] — std unused; UT derives spread from base-model cloud.
         std::vector<float> meta_mean_norm(meta_out.begin(),
                                           meta_out.begin() + T * K);
-        std::vector<float> meta_std_norm(meta_out.begin() + T * K,
-                                         meta_out.end());
 
-        // 6. Compute mean+std latents in normalized space.
-        std::vector<float> meta_plus_norm(T * K);
-        for (int i = 0; i < T * K; ++i)
-            meta_plus_norm[i] = meta_mean_norm[i] + meta_std_norm[i];
+        // 6. UT hyperparameters (α=1, β=2, κ=0 → λ=0, c=K).
+        const float c_ut  = static_cast<float>(K);
+        const int   N_SIG = 2 * K + 1;
 
-        // 7. De-normalize both latent series (H-1, K).
+        std::vector<float> Wm(N_SIG, 1.0f / (2.0f * c_ut));
+        std::vector<float> Wc(N_SIG, 1.0f / (2.0f * c_ut));
+        Wm[0] = 0.0f;
+        Wc[0] = 2.0f;  // 1 - α² + β = 1 - 1 + 2
+
+        // 7. Denorm meta mean (H-1, K) and all M base-model latents (M*(H-1)*K).
         ts_norm_->denorm_latents_block(meta_mean_norm.data(), T);
-        ts_norm_->denorm_latents_block(meta_plus_norm.data(), T);
+        ts_norm_->denorm_latents_block(base_latents_norm.data(), M * T);
 
-        // 8. Prepend t=0 latent from X_init (row index S-1), denormalized.
-        //    The same t=0 latent is prepended to both series — no uncertainty
-        //    at the initial condition.
         std::vector<float> init_lat(K);
         std::copy(X_init.begin() + (S - 1) * D,
                   X_init.begin() + (S - 1) * D + K,
                   init_lat.begin());
         ts_norm_->denorm_latents_inplace(init_lat.data());
 
-        std::vector<float> latents_mean(static_cast<size_t>(H) * K);
-        std::vector<float> latents_plus(static_cast<size_t>(H) * K);
+        // mu_lat (H, K): meta-model mean with t=0 prepended.
+        std::vector<float> mu_lat(static_cast<size_t>(H) * K);
+        std::copy(init_lat.begin(), init_lat.end(), mu_lat.begin());
+        std::copy(meta_mean_norm.begin(), meta_mean_norm.end(), mu_lat.begin() + K);
 
-        std::copy(init_lat.begin(), init_lat.end(), latents_mean.begin());
-        std::copy(meta_mean_norm.begin(), meta_mean_norm.end(),
-                  latents_mean.begin() + K);
+        // 8. Build sigma points sigma_lat (H, N_SIG, K).
+        const size_t sig_stride = static_cast<size_t>(N_SIG) * K;
+        std::vector<float> sigma_lat(static_cast<size_t>(H) * sig_stride, 0.0f);
 
-        std::copy(init_lat.begin(), init_lat.end(), latents_plus.begin());
-        std::copy(meta_plus_norm.begin(), meta_plus_norm.end(),
-                  latents_plus.begin() + K);
+        std::vector<float> Pt(K * K);
+        std::vector<float> cPt(K * K);
+        constexpr float EPS_JIT  = 1e-6f;
+        constexpr float EPS_JIT2 = 1e-3f;
 
-        // 9. Decode both latent series → physical density.
-        std::vector<float> density_mean = decoder_->decode(latents_mean, H, K);
-        std::vector<float> density_plus = decoder_->decode(latents_plus, H, K);
+        for (int t = 0; t < H; ++t) {
+            const float* mu_t  = mu_lat.data() + t * K;
+            float*       sig_t = sigma_lat.data() + t * static_cast<ptrdiff_t>(sig_stride);
 
-        // 10. Uncertainty = |density_plus - density_mean| per voxel.
+            std::copy(mu_t, mu_t + K, sig_t);
+
+            // Unbiased sample covariance from base-model latent cloud.
+            std::fill(Pt.begin(), Pt.end(), 0.0f);
+            for (int m = 0; m < M; ++m) {
+                const float* x_mt = (t == 0)
+                    ? init_lat.data()
+                    : base_latents_norm.data() + m * T * K + (t - 1) * K;
+                for (int i = 0; i < K; ++i) {
+                    float di = x_mt[i] - mu_t[i];
+                    for (int j = 0; j <= i; ++j)
+                        Pt[i * K + j] += di * (x_mt[j] - mu_t[j]);
+                }
+            }
+            const float inv_m = (M > 1) ? 1.0f / static_cast<float>(M - 1) : 0.0f;
+            for (int i = 0; i < K; ++i)
+                for (int j = 0; j <= i; ++j) {
+                    float v = Pt[i * K + j] * inv_m;
+                    Pt[i * K + j] = v;
+                    Pt[j * K + i] = v;
+                }
+
+            // c·Pt + ε·I, then Cholesky.
+            for (int idx = 0; idx < K * K; ++idx) cPt[idx] = c_ut * Pt[idx];
+            for (int i   = 0; i   < K;     ++i)   cPt[i * K + i] += c_ut * EPS_JIT;
+
+            if (!cholesky_inplace(cPt.data(), K)) {
+                for (int i = 0; i < K; ++i) cPt[i * K + i] += c_ut * EPS_JIT2;
+                if (!cholesky_inplace(cPt.data(), K))
+                    throw std::runtime_error(
+                        "UT: Cholesky failed at t=" + std::to_string(t));
+            }
+
+            for (int i = 0; i < K; ++i) {
+                float* sp = sig_t + (1 + i)     * K;
+                float* sm = sig_t + (1 + K + i) * K;
+                for (int j = 0; j < K; ++j) {
+                    float sji = cPt[j * K + i];
+                    sp[j] = mu_t[j] + sji;
+                    sm[j] = mu_t[j] - sji;
+                }
+            }
+        }
+
+        // 9. Batch-decode all H*N_SIG sigma points.
+        std::vector<float> dens_sigmas =
+            decoder_->decode(sigma_lat, H * N_SIG, K);
+
+        // 10. UT mean then variance → density and uncertainty.
         const size_t total_voxels = static_cast<size_t>(H) * GRID_VOXELS;
-        std::vector<float> uncertainty(total_voxels);
-        for (size_t i = 0; i < total_voxels; ++i)
-            uncertainty[i] = std::abs(density_plus[i] - density_mean[i]);
+        std::vector<float> density_mean(total_voxels, 0.0f);
+
+        for (int t = 0; t < H; ++t)
+            for (int s = 0; s < N_SIG; ++s) {
+                const float* src = dens_sigmas.data() +
+                                   (static_cast<size_t>(t) * N_SIG + s) * GRID_VOXELS;
+                float* dst = density_mean.data() + static_cast<size_t>(t) * GRID_VOXELS;
+                const float w = Wm[s];
+                for (int v = 0; v < GRID_VOXELS; ++v)
+                    dst[v] += w * src[v];
+            }
+
+        std::vector<float> uncertainty(total_voxels, 0.0f);
+
+        for (int t = 0; t < H; ++t)
+            for (int s = 0; s < N_SIG; ++s) {
+                const float* src = dens_sigmas.data() +
+                                   (static_cast<size_t>(t) * N_SIG + s) * GRID_VOXELS;
+                const float* mu  = density_mean.data() + static_cast<size_t>(t) * GRID_VOXELS;
+                float* dst = uncertainty.data() + static_cast<size_t>(t) * GRID_VOXELS;
+                const float w = Wc[s];
+                for (int v = 0; v < GRID_VOXELS; ++v) {
+                    float d = src[v] - mu[v];
+                    dst[v] += w * d * d;
+                }
+            }
+
+        for (float& u : uncertainty)
+            u = std::sqrt(std::max(u, 0.0f));
 
         // 11. Build ForecastGrid.
         ForecastGrid grid;
