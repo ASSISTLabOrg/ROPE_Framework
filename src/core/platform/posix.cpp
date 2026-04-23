@@ -6,6 +6,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 #include <spawn.h>
+#include <fcntl.h>
 #include <cerrno>
 #include <cstring>
 #include <filesystem>
@@ -192,6 +193,16 @@ void spawn_server(const std::filesystem::path& exe,
         nullptr
     };
 
+    // Redirect the server's stdin/stdout/stderr to /dev/null so it does not
+    // inherit any captured pipes from the caller.  Without this,
+    // subprocess.run(capture_output=True) in Python hangs: the server holds
+    // the write end of the captured pipe open indefinitely.
+    posix_spawn_file_actions_t fa;
+    posix_spawn_file_actions_init(&fa);
+    posix_spawn_file_actions_addopen(&fa, STDIN_FILENO,  "/dev/null", O_RDONLY, 0);
+    posix_spawn_file_actions_addopen(&fa, STDOUT_FILENO, "/dev/null", O_WRONLY, 0);
+    posix_spawn_file_actions_addopen(&fa, STDERR_FILENO, "/dev/null", O_WRONLY, 0);
+
     posix_spawnattr_t attr;
     posix_spawnattr_init(&attr);
     // Request a new process group so the child survives the parent exiting
@@ -199,8 +210,9 @@ void spawn_server(const std::filesystem::path& exe,
     posix_spawnattr_setpgroup(&attr, 0);
 
     pid_t pid;
-    int rc = posix_spawn(&pid, exe_s.c_str(), nullptr, &attr, argv, environ);
+    int rc = posix_spawn(&pid, exe_s.c_str(), &fa, &attr, argv, environ);
     posix_spawnattr_destroy(&attr);
+    posix_spawn_file_actions_destroy(&fa);
 
     if (rc != 0)
         throw std::runtime_error(

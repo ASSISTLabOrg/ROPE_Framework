@@ -115,6 +115,11 @@ class Rope:
         self._handle: "int | None" = None
         self._lib         = self._load_lib()
 
+        # Pre-allocated buffers for get_density() — avoids per-call allocation.
+        self._qden = ctypes.c_double()
+        self._qunc = ctypes.c_double()
+        self._qerr = ctypes.create_string_buffer(256)
+
     @property
     def device(self) -> str:
         """Active decoder device string (as will be passed to the server)."""
@@ -242,6 +247,32 @@ class Rope:
             raise RopeError(rc, err.value.decode())
 
         return {"density": density.value, "uncertainty": uncertainty.value}
+
+    def get_density(
+        self,
+        time: "float | str | datetime",
+        lst: float,
+        lat: float,
+        alt_km: float,
+        mode: int = ROPE_INTERP,
+    ) -> float:
+        """
+        Query density at a single point, returning a bare float.
+
+        Faster than get() for tight loops: no dict allocation, no uncertainty
+        output, and reuses pre-allocated ctypes buffers across calls.
+        """
+        if self._handle is None:
+            self.open()
+
+        rc = self._lib.rope_query(
+            self._handle, mode, _to_unix(time), lst, lat, alt_km,
+            ctypes.byref(self._qden), ctypes.byref(self._qunc),
+            self._qerr, len(self._qerr),
+        )
+        if rc != 0:
+            raise RopeError(rc, self._qerr.value.decode())
+        return self._qden.value
 
     def get_batch(
         self,
