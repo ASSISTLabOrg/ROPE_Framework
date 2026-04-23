@@ -80,7 +80,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: build/_deps
-          key: deps-linux-x64-cuda12-ort1.25.0-torch2.7.0-cu128
+          key: deps-linux-x64-cuda12-ort1.25.0
       - run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
@@ -88,7 +88,7 @@ jobs:
             -DCMAKE_CXX_COMPILER=g++-12 \
             -DROPE_DOWNLOAD_DEPS=ON \
             -DROPE_HARDWARE=cuda12 \
-            -DROPE_USE_LIBTORCH=ON \
+            -DROPE_USE_LIBTORCH=OFF \
             -DROPE_PACKAGE_SUFFIX=linux-x86_64-cuda12 \
             -DROPE_RELEASE_VERSION=${{ github.ref_name }}
       - run: cmake --build build --parallel
