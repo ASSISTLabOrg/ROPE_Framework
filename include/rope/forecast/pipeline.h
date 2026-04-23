@@ -34,6 +34,10 @@ struct Config {
     // PyTorch device string for the COAE decoder when LibTorch is linked.
     // "cpu", "cuda", "cuda:0", etc.  Ignored when using the ONNX backend.
     std::string decoder_device = "cpu";
+
+    // When false, skip the Unscented Transform entirely.  The decoder runs
+    // once on the meta-model mean latents; uncertainty is set to 0.
+    bool compute_uncertainty = true;
 };
 
 // ---------------------------------------------------------------------------

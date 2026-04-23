@@ -310,6 +310,7 @@ void run(const std::filesystem::path& socket_path,
         fcfg.intra_threads_base    = config.get_int("threads.intra_threads_base", 1);
         fcfg.intra_threads_decoder = config.get_int("threads.intra_threads_decoder", 0);
         fcfg.decoder_device        = config.get("decoder.device", "cpu");
+        fcfg.compute_uncertainty   = config.get("forecast.compute_uncertainty", "true") == "true";
 
         state.pipeline = forecast::load(fcfg);
     } catch (const std::exception& e) {

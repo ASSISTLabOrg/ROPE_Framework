@@ -48,6 +48,7 @@ matplotlib.rcParams.update({
 })
 import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
+from pathlib import Path
 from scipy.integrate import solve_ivp
 
 from demo_lib.perturbations import (
@@ -255,7 +256,7 @@ def main():
     # Rope
     print("Integrating ROPE Model ...", flush=True)
     rho_log_rope = []
-    rp = Rope()
+    rp = Rope(config_path=Path(__file__).parent / "rope.conf")
     rp.forecast(epoch, horizon=int(24.0 * args.days + 12)) # run the forecast
     with rp:
         sol_rope = solve_ivp(eom_rope, (0.0, t_end), x0,

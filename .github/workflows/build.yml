@@ -111,7 +111,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DROPE_DOWNLOAD_DEPS=ON \
             -DROPE_HARDWARE=cpu \
-            -DROPE_USE_LIBTORCH=OFF \
+            -DROPE_USE_LIBTORCH=ON \
             -DROPE_PACKAGE_SUFFIX=macos-arm64-cpu
 
       - name: Build
@@ -146,7 +146,7 @@ jobs:
             -G "Visual Studio 17 2022" -A x64 `
             -DROPE_DOWNLOAD_DEPS=ON `
             -DROPE_HARDWARE=cpu `
-            -DROPE_USE_LIBTORCH=OFF `
+            -DROPE_USE_LIBTORCH=ON `
             -DROPE_PACKAGE_SUFFIX=windows-x64-cpu
 
       - name: Build

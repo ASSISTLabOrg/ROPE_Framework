@@ -42,3 +42,13 @@ intra_threads_decoder = 0
 # device = cuda      Run decoder on the first available GPU.
 # device = cuda:0    Explicit GPU index.
 device = @ROPE_DECODER_DEVICE@
+
+
+# ---------------------------------------------------------------------------
+[forecast]
+# ---------------------------------------------------------------------------
+
+# Set to false to skip the Unscented Transform uncertainty calculation.
+# The decoder runs once on the meta-model mean latents; uncertainty is set
+# to 0.  Substantially faster when uncertainty estimates are not needed.
+compute_uncertainty = true
