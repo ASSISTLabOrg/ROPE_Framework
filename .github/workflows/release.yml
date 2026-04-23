@@ -12,6 +12,11 @@ jobs:
     container: debian:bookworm
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Extract version from tag
+        shell: bash
+        run: echo "ROPE_VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
       - name: Install build tools
         run: |
           apt-get update
@@ -29,7 +34,8 @@ jobs:
             -DROPE_DOWNLOAD_DEPS=ON \
             -DROPE_HARDWARE=cpu \
             -DROPE_USE_LIBTORCH=OFF \
-            -DROPE_PACKAGE_SUFFIX=linux-x86_64-cpu
+            -DROPE_PACKAGE_SUFFIX=linux-x86_64-cpu \
+            -DROPE_VERSION=${{ env.ROPE_VERSION }}
       - run: cmake --build build --parallel
       - run: cpack --config build/CPackConfig.cmake
       - uses: actions/upload-artifact@v4
@@ -44,6 +50,11 @@ jobs:
       MACOSX_DEPLOYMENT_TARGET: "12.0"
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Extract version from tag
+        shell: bash
+        run: echo "ROPE_VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
       - name: Install CMake 4.x
         run: pip3 install --quiet --break-system-packages "cmake>=4.2"
       - uses: actions/cache@v4
@@ -56,7 +67,8 @@ jobs:
             -DROPE_DOWNLOAD_DEPS=ON \
             -DROPE_HARDWARE=cpu \
             -DROPE_USE_LIBTORCH=OFF \
-            -DROPE_PACKAGE_SUFFIX=macos-arm64-cpu
+            -DROPE_PACKAGE_SUFFIX=macos-arm64-cpu \
+            -DROPE_VERSION=${{ env.ROPE_VERSION }}
       - run: cmake --build build --parallel
       - run: cpack --config build/CPackConfig.cmake
       - uses: actions/upload-artifact@v4
@@ -70,6 +82,11 @@ jobs:
     container: debian:bookworm
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Extract version from tag
+        shell: bash
+        run: echo "ROPE_VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
       - name: Install build tools
         run: |
           apt-get update
@@ -87,7 +104,8 @@ jobs:
             -DROPE_DOWNLOAD_DEPS=ON \
             -DROPE_HARDWARE=cuda12 \
             -DROPE_USE_LIBTORCH=OFF \
-            -DROPE_PACKAGE_SUFFIX=linux-x86_64-cuda12
+            -DROPE_PACKAGE_SUFFIX=linux-x86_64-cuda12 \
+            -DROPE_VERSION=${{ env.ROPE_VERSION }}
       - run: cmake --build build --parallel
       - run: cpack --config build/CPackConfig.cmake
       - uses: actions/upload-artifact@v4
@@ -100,6 +118,11 @@ jobs:
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Extract version from tag
+        shell: bash
+        run: echo "ROPE_VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
       - name: Install CMake 4.x
         run: pip install --quiet --break-system-packages "cmake>=4.2"
       - uses: actions/cache@v4
@@ -112,7 +135,8 @@ jobs:
             -DROPE_DOWNLOAD_DEPS=ON `
             -DROPE_HARDWARE=cpu `
             -DROPE_USE_LIBTORCH=OFF `
-            -DROPE_PACKAGE_SUFFIX=windows-x64-cpu
+            -DROPE_PACKAGE_SUFFIX=windows-x64-cpu `
+            -DROPE_VERSION=${{ env.ROPE_VERSION }}
       - run: cmake --build build --config Release --parallel
       - run: cpack --config build/CPackConfig.cmake -C Release
       - uses: actions/upload-artifact@v4

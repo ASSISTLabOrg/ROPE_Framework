@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 4.2)
 project(ROPE VERSION 0.2.0 LANGUAGES CXX C)
 
+# Allow CI to inject the version from the git tag: -DROPE_VERSION=x.y.z
+if(ROPE_VERSION)
+    set(PROJECT_VERSION "${ROPE_VERSION}")
+endif()
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -268,7 +273,16 @@ install(TARGETS rope
 
 install(FILES include/rope/capi/rope.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/rope/capi)
-install(FILES config/rope.conf DESTINATION config)
+# Generate rope.conf with the correct decoder device for this hardware variant.
+if(ROPE_HARDWARE MATCHES "^cuda")
+    set(ROPE_DECODER_DEVICE "cuda")
+elseif(ROPE_HARDWARE MATCHES "^rocm")
+    set(ROPE_DECODER_DEVICE "cuda")
+else()
+    set(ROPE_DECODER_DEVICE "cpu")
+endif()
+configure_file(config/rope.conf.in "${CMAKE_CURRENT_BINARY_DIR}/config/rope.conf" @ONLY)
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/config/rope.conf" DESTINATION config)
 
 # Bundle ORT runtime libraries
 if(ORT_LIB)
@@ -316,10 +330,12 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/data")
     install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/data/" DESTINATION data)
 endif()
 
+# Python binding
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/python/" DESTINATION python)
+
 # Python demo
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/demo")
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/demo/pyproject.toml")
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/demo/" DESTINATION demo
-    PATTERN ".git"            EXCLUDE
     PATTERN "__pycache__"     EXCLUDE
     PATTERN "*.pyc"           EXCLUDE
     PATTERN "*.pkl"           EXCLUDE

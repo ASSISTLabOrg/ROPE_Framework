@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rope-framework"
+dynamic = ["version"]
+description = "Python binding for the ROPE atmospheric density framework."
+requires-python = ">=3.8"
+authors = [{name = "Violet Player", email = "violet.player@noaa.gov"}]
+license = { text = "MIT" }
+dependencies = []
+
+[tool.setuptools]
+py-modules = ["rope"]
+
+[tool.setuptools_scm]
+# Traverse up from python/ to find the repo root and read the git tag.
+# Tags of the form v0.2.0 are normalised to 0.2.0 automatically.
+# fallback_version is used when building outside a git checkout (e.g. from a sdist).
+fallback_version = "0.0.0"

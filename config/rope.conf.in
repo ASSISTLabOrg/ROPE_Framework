@@ -1,0 +1,44 @@
+# rope.conf — ROPE runtime configuration
+#
+# Relative paths are resolved relative to this config file's directory.
+# Use absolute paths if you need to point outside the package tree.
+
+# ---------------------------------------------------------------------------
+[paths]
+# ---------------------------------------------------------------------------
+
+# Directory produced by export_models.py (contains *.onnx + *.bin files).
+exported_dir = ../models/exported
+
+# Space-weather database (sw_celestrack_1957.csv or equivalent).
+driver_csv = ../data/sw_celestrack_1957.csv
+
+# Initial-conditions table.
+ic_csv = ../data/IC_Table_modified.csv
+
+
+# ---------------------------------------------------------------------------
+[threads]
+# ---------------------------------------------------------------------------
+
+# ORT intra-op threads for the 15 base models and the meta model.
+# 1 is typically best here because OpenMP already parallelises across models.
+intra_threads_base = 1
+
+# ORT intra-op threads for the COAE decoder (conv-heavy, benefits from all
+# available cores).  Set to 0 to use hardware_concurrency() automatically.
+# Ignored when [decoder] device != cpu (GPU execution uses its own thread pool).
+intra_threads_decoder = 0
+
+
+# ---------------------------------------------------------------------------
+[decoder]
+# ---------------------------------------------------------------------------
+# Only used when the binary was compiled with ROPE_USE_LIBTORCH=ON.
+# When using the ONNX Runtime backend (ROPE_USE_LIBTORCH=OFF), this section
+# is ignored and the [threads] settings above apply instead.
+#
+# device = cpu       Run decoder on CPU via LibTorch (default).
+# device = cuda      Run decoder on the first available GPU.
+# device = cuda:0    Explicit GPU index.
+device = @ROPE_DECODER_DEVICE@
