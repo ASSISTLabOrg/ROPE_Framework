@@ -23,7 +23,7 @@ All units: km, km/s, km/s^2
 
 import numpy as np
 from datetime import datetime, timedelta
-from .rope import Rope
+from rope import Rope
 
 # ---------------------------------------------------------------------------
 # USSA76

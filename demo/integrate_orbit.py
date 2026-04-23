@@ -55,7 +55,7 @@ from demo_lib.perturbations import (
     eci_to_geodetic,
     _MU, _RE,
 )
-from demo_lib.rope import Rope
+from rope import Rope
 
 # ---------------------------------------------------------------------------
 # Equations of motion

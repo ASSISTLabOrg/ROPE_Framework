@@ -9,14 +9,15 @@ jobs:
   build-linux:
     name: Linux (x86_64, cpu)
     runs-on: ubuntu-22.04
-    container: debian:bullseye
+    container: debian:bookworm
     steps:
       - uses: actions/checkout@v4
 
       - name: Install build tools
         run: |
           apt-get update
-          apt-get install -y cmake ninja-build gcc-10 g++-10 make ca-certificates
+          apt-get install -y ninja-build gcc-12 g++-12 make ca-certificates python3-pip
+          pip3 install --quiet --break-system-packages "cmake>=4.2"
 
       - name: Cache downloaded deps
         uses: actions/cache@v4
@@ -28,8 +29,8 @@ jobs:
         run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER=gcc-10 \
-            -DCMAKE_CXX_COMPILER=g++-10 \
+            -DCMAKE_C_COMPILER=gcc-12 \
+            -DCMAKE_CXX_COMPILER=g++-12 \
             -DROPE_DOWNLOAD_DEPS=ON \
             -DROPE_HARDWARE=cpu \
             -DROPE_USE_LIBTORCH=OFF \
@@ -46,6 +47,47 @@ jobs:
           name: rope-linux-x86_64-cpu
           path: rope_framework-*-linux-*.tar.gz
 
+  build-linux-cuda12:
+    name: Linux (x86_64, cuda12)
+    runs-on: ubuntu-22.04
+    container: debian:bookworm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          apt-get update
+          apt-get install -y ninja-build gcc-12 g++-12 make ca-certificates python3-pip
+          pip3 install --quiet --break-system-packages "cmake>=4.2"
+
+      - name: Cache downloaded deps
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: deps-linux-x64-cuda12-ort1.25.0
+
+      - name: Configure
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=gcc-12 \
+            -DCMAKE_CXX_COMPILER=g++-12 \
+            -DROPE_DOWNLOAD_DEPS=ON \
+            -DROPE_HARDWARE=cuda12 \
+            -DROPE_USE_LIBTORCH=OFF \
+            -DROPE_PACKAGE_SUFFIX=linux-x86_64-cuda12
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Package
+        run: cpack --config build/CPackConfig.cmake
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rope-linux-x86_64-cuda12
+          path: rope_framework-*-linux-*.tar.gz
+
   build-macos-arm64:
     name: macOS (arm64, cpu)
     runs-on: macos-14
@@ -53,6 +95,9 @@ jobs:
       MACOSX_DEPLOYMENT_TARGET: "12.0"
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install CMake 4.x
+        run: pip3 install --quiet --break-system-packages "cmake>=4.2"
 
       - name: Cache downloaded deps
         uses: actions/cache@v4
@@ -80,45 +125,14 @@ jobs:
           name: rope-macos-arm64-cpu
           path: rope_framework-*-macos-*.tar.gz
 
-  build-macos-x86_64:
-    name: macOS (x86_64, cpu)
-    runs-on: macos-13
-    env:
-      MACOSX_DEPLOYMENT_TARGET: "12.0"
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Cache downloaded deps
-        uses: actions/cache@v4
-        with:
-          path: build/_deps
-          key: deps-macos-x86_64-cpu-ort1.25.0-torch2.7.0
-
-      - name: Configure
-        run: |
-          cmake -B build \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DROPE_DOWNLOAD_DEPS=ON \
-            -DROPE_HARDWARE=cpu \
-            -DROPE_USE_LIBTORCH=OFF \
-            -DROPE_PACKAGE_SUFFIX=macos-x86_64-cpu
-
-      - name: Build
-        run: cmake --build build --parallel
-
-      - name: Package
-        run: cpack --config build/CPackConfig.cmake
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: rope-macos-x86_64-cpu
-          path: rope_framework-*-macos-*.tar.gz
-
   build-windows:
     name: Windows (x64, cpu)
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install CMake 4.x
+        run: pip install --quiet --break-system-packages "cmake>=4.2"
 
       - name: Cache downloaded deps
         uses: actions/cache@v4

@@ -1,4 +1,4 @@
-_*
 build/
 data/
 models/
+__pycache__

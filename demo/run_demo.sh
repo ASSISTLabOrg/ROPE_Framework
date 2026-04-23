@@ -1,32 +1,28 @@
 #!/bin/bash
 
-# run_demo.sh
-# 
-# Date: 2026-04-13
-#
-# Runs the full orbit integration and sensitivity study.
-
 set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+echo "Installing dependencies..."
+pip3 install --quiet "$SCRIPT_DIR/../python"
+pip3 install --quiet -e "$SCRIPT_DIR"
 
 echo "Starting SWW26 Demo..."
 echo "----------------------"
 
-# 1. Run Orbit Integration
 echo "Step 1: Running Orbit Integration..."
-python3 integrate_orbit.py --days 1
+python3 "$SCRIPT_DIR/integrate_orbit.py" --days 1
 
-# 2. Run sensitivity Study
 echo ""
-echo "Step 2: Running sensitivity Study (Historical Solar Phases)..."
-python3 src/sensitivity.py --days 1 --dt 60
+echo "Step 2: Running Sensitivity Study (Historical Solar Phases)..."
+python3 "$SCRIPT_DIR/sensitivity.py" --days 1 --dt 60
 
-# 3. Run Reentry Simulation
 echo ""
 echo "Step 3: Running Reentry Simulation (900km to Splashdown)..."
-export PYTHONPATH=$PYTHONPATH:$(pwd)/src
-python3 src/reentry_test.py
+python3 "$SCRIPT_DIR/reentry_test.py"
 
 echo ""
 echo "----------------------"
 echo "Demo complete. All outputs are saved in the 'output' directory."
-ls -l output
+ls -l "$SCRIPT_DIR/output"

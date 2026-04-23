@@ -17,7 +17,6 @@ dependencies = [
     "matplotlib",
     "pandas",
     "pymsis",
-    "rope-framework @ file://../python",
 ]
 
 [project.optional-dependencies]
