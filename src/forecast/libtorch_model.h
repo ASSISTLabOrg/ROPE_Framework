@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <torch/cuda.h>
 #include <torch/script.h>
 #include <torch/utils.h>
 
