@@ -80,7 +80,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: build/_deps
-          key: deps-linux-x64-cuda12-ort1.25.0
+          key: deps-linux-x64-cuda12-ort1.25.0-torch2.7.0-cu128
       - run: |
           cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \

@@ -151,7 +151,7 @@ if(ROPE_USE_LIBTORCH AND ROPE_DOWNLOAD_DEPS)
     if(_ROPE_PLAT STREQUAL "linux-x86_64")
         if(ROPE_HARDWARE STREQUAL "cuda12")
             set(_TORCH_URL
-                "https://download.pytorch.org/libtorch/cu124/libtorch-cxx11-abi-shared-with-deps-${_TORCH_VERSION}%2Bcu124.zip")
+                "https://download.pytorch.org/libtorch/cu128/libtorch-cxx11-abi-shared-with-deps-${_TORCH_VERSION}%2Bcu128.zip")
         elseif(ROPE_HARDWARE STREQUAL "cuda11")
             set(_TORCH_URL
                 "https://download.pytorch.org/libtorch/cu118/libtorch-cxx11-abi-shared-with-deps-${_TORCH_VERSION}%2Bcu118.zip")
@@ -177,7 +177,7 @@ if(ROPE_USE_LIBTORCH AND ROPE_DOWNLOAD_DEPS)
     elseif(_ROPE_PLAT STREQUAL "windows-x64")
         if(ROPE_HARDWARE STREQUAL "cuda12")
             set(_TORCH_URL
-                "https://download.pytorch.org/libtorch/cu124/libtorch-win-shared-with-deps-${_TORCH_VERSION}%2Bcu124.zip")
+                "https://download.pytorch.org/libtorch/cu128/libtorch-win-shared-with-deps-${_TORCH_VERSION}%2Bcu128.zip")
         elseif(ROPE_HARDWARE STREQUAL "cuda11")
             set(_TORCH_URL
                 "https://download.pytorch.org/libtorch/cu118/libtorch-win-shared-with-deps-${_TORCH_VERSION}%2Bcu118.zip")
