@@ -31,6 +31,8 @@ Public API
 import io
 import os
 import pickle
+import ssl
+import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, date as date_type
 from pathlib import Path
@@ -59,8 +61,17 @@ def _download_csv(url: str) -> pd.DataFrame:
     """Download CelesTrak SW CSV and return a DataFrame indexed by date."""
     print(f"  Downloading space weather data from:\n    {url}")
     req = urllib.request.Request(url, headers={"User-Agent": "orbit-propagator/1.0"})
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        raw = resp.read().decode("utf-8")
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            raw = resp.read().decode("utf-8")
+    except urllib.error.URLError as e:
+        if "SSL" not in str(e) and "certificate" not in str(e).lower():
+            raise
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        with urllib.request.urlopen(req, timeout=30, context=ctx) as resp:
+            raw = resp.read().decode("utf-8")
 
     # The file has a header section terminated by BEGIN OBSERVED / similar
     # keywords in the legacy format; the CSV format is clean — just skip
