@@ -304,14 +304,24 @@ endif()
 
 # Bundle LibTorch runtime libraries
 if(Torch_FOUND)
-    foreach(_lib IN LISTS TORCH_LIBRARIES)
-        if(_lib MATCHES "\\.so" OR _lib MATCHES "\\.dylib")
-            install(FILES "${_lib}" DESTINATION ${CMAKE_INSTALL_LIBDIR})
-        endif()
-    endforeach()
+    if(TORCH_INSTALL_PREFIX)
+        set(_torch_lib_dir "${TORCH_INSTALL_PREFIX}/lib")
+    else()
+        list(GET TORCH_LIBRARIES 0 _first_torch_lib)
+        get_filename_component(_torch_lib_dir "${_first_torch_lib}" DIRECTORY)
+    endif()
     if(WIN32)
-        file(GLOB _torch_dlls "${LIBTORCH_ROOT}/lib/*.dll")
-        install(FILES ${_torch_dlls} DESTINATION ${CMAKE_INSTALL_BINDIR})
+        install(DIRECTORY "${_torch_lib_dir}/"
+            DESTINATION ${CMAKE_INSTALL_BINDIR}
+            FILES_MATCHING PATTERN "*.dll")
+    elseif(APPLE)
+        install(DIRECTORY "${_torch_lib_dir}/"
+            DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            FILES_MATCHING PATTERN "*.dylib")
+    else()
+        install(DIRECTORY "${_torch_lib_dir}/"
+            DESTINATION ${CMAKE_INSTALL_LIBDIR}
+            FILES_MATCHING PATTERN "*.so" PATTERN "*.so.*")
     endif()
 endif()
 
