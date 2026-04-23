@@ -308,6 +308,7 @@ void run(const std::filesystem::path& socket_path,
         fcfg.driver_csv            = resolve(config.get("paths.driver_csv"));
         fcfg.ic_csv                = resolve(config.get("paths.ic_csv"));
         fcfg.intra_threads_base    = config.get_int("threads.intra_threads_base", 1);
+        fcfg.intra_threads_meta    = config.get_int("threads.intra_threads_meta", 0);
         fcfg.intra_threads_decoder = config.get_int("threads.intra_threads_decoder", 0);
         fcfg.decoder_device        = config.get("decoder.device", "cpu");
         fcfg.compute_uncertainty   = config.get("forecast.compute_uncertainty", "true") == "true";

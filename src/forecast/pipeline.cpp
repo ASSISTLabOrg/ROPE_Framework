@@ -123,10 +123,14 @@ public:
         }
 
         // --- Meta model ---
+        int meta_threads = cfg.intra_threads_meta;
+        if (meta_threads <= 0)
+            meta_threads = static_cast<int>(std::thread::hardware_concurrency());
+
         std::cout << "Loading meta model…\n";
         meta_model_ = std::make_unique<MetaModel>(
             make_model((dir / "meta_model.onnx").string(),
-                       ModelBackend::ONNX, cfg.intra_threads_base,
+                       ModelBackend::ONNX, meta_threads,
                        false, "cpu"),
             K, S, D, M
         );
@@ -164,6 +168,7 @@ public:
 
         std::cout << "Pipeline loaded.  total_dim=" << D
                   << "  driver_dim=" << dd
+                  << "  meta_threads=" << meta_threads
                   << "  uncertainty=" << (compute_uncertainty_ ? "on" : "off") << "\n";
     }
 

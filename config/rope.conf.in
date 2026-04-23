@@ -21,9 +21,14 @@ ic_csv = ../data/IC_Table_modified.csv
 [threads]
 # ---------------------------------------------------------------------------
 
-# ORT intra-op threads for the 15 base models and the meta model.
+# ORT intra-op threads for the 15 base models.
 # 1 is typically best here because OpenMP already parallelises across models.
 intra_threads_base = 1
+
+# ORT intra-op threads for the meta model (batched Transformer inference over
+# T timesteps; benefits from multi-threading).
+# Set to 0 to use hardware_concurrency() automatically.
+intra_threads_meta = 0
 
 # ORT intra-op threads for the COAE decoder (conv-heavy, benefits from all
 # available cores).  Set to 0 to use hardware_concurrency() automatically.

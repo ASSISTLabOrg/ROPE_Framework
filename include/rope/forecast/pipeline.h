@@ -22,9 +22,13 @@ struct Config {
     std::filesystem::path driver_csv;     // sw_celestrack_1957.csv or equivalent
     std::filesystem::path ic_csv;         // IC_Table_modified.csv
 
-    // ORT intra-op threads for the 15 base models and meta model.
+    // ORT intra-op threads for the 15 base models.
     // 1 is fine; OpenMP parallelises across the 15 models already.
     int intra_threads_base    = 1;
+
+    // ORT intra-op threads for the meta model (batched Transformer, benefits
+    // from multi-threading).  0 = std::thread::hardware_concurrency().
+    int intra_threads_meta    = 0;
 
     // ORT intra-op threads for the COAE decoder (conv-heavy).
     // 0 = std::thread::hardware_concurrency().
