@@ -4,6 +4,7 @@ project(ROPE VERSION 0.2.0 LANGUAGES CXX C)
 # Allow CI to inject the version from the git tag: -DROPE_RELEASE_VERSION=x.y.z
 # (Cannot use ROPE_VERSION — project() sets that to the hardcoded version above.)
 if(ROPE_RELEASE_VERSION)
+    string(REGEX REPLACE "^v" "" ROPE_RELEASE_VERSION "${ROPE_RELEASE_VERSION}")
     set(PROJECT_VERSION "${ROPE_RELEASE_VERSION}")
 endif()
 

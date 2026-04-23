@@ -33,7 +33,7 @@ jobs:
             -DCMAKE_CXX_COMPILER=g++-12 \
             -DROPE_DOWNLOAD_DEPS=ON \
             -DROPE_HARDWARE=cpu \
-            -DROPE_USE_LIBTORCH=OFF \
+            -DROPE_USE_LIBTORCH=ON \
             -DROPE_PACKAGE_SUFFIX=linux-x86_64-cpu
 
       - name: Build
