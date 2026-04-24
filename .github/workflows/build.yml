@@ -4,6 +4,12 @@ on:
   push:
     branches: ["**"]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      test_all_platforms:
+        description: "Run tests on all platforms (not just Linux cpu)"
+        type: boolean
+        default: false
 
 jobs:
   build-linux:
@@ -34,10 +40,17 @@ jobs:
             -DROPE_DOWNLOAD_DEPS=ON \
             -DROPE_HARDWARE=cpu \
             -DROPE_USE_LIBTORCH=ON \
+            -DROPE_BUILD_TESTS=ON \
             -DROPE_PACKAGE_SUFFIX=linux-x86_64-cpu
 
       - name: Build
         run: cmake --build build --parallel
+
+      - name: Test (C++)
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Test (Python)
+        run: pip3 install --quiet --break-system-packages pytest && pytest tests/python/ -v
 
       - name: Package
         run: cpack --config build/CPackConfig.cmake
@@ -75,10 +88,19 @@ jobs:
             -DROPE_DOWNLOAD_DEPS=ON \
             -DROPE_HARDWARE=cuda12 \
             -DROPE_USE_LIBTORCH=OFF \
+            ${{ inputs.test_all_platforms == true && '-DROPE_BUILD_TESTS=ON' || '' }} \
             -DROPE_PACKAGE_SUFFIX=linux-x86_64-cuda12
 
       - name: Build
         run: cmake --build build --parallel
+
+      - name: Test (C++)
+        if: ${{ inputs.test_all_platforms == true }}
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Test (Python)
+        if: ${{ inputs.test_all_platforms == true }}
+        run: pip3 install --quiet --break-system-packages pytest && pytest tests/python/ -v
 
       - name: Package
         run: cpack --config build/CPackConfig.cmake
@@ -112,10 +134,19 @@ jobs:
             -DROPE_DOWNLOAD_DEPS=ON \
             -DROPE_HARDWARE=cpu \
             -DROPE_USE_LIBTORCH=ON \
+            ${{ inputs.test_all_platforms == true && '-DROPE_BUILD_TESTS=ON' || '' }} \
             -DROPE_PACKAGE_SUFFIX=macos-arm64-cpu
 
       - name: Build
         run: cmake --build build --parallel
+
+      - name: Test (C++)
+        if: ${{ inputs.test_all_platforms == true }}
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Test (Python)
+        if: ${{ inputs.test_all_platforms == true }}
+        run: pip3 install --quiet --break-system-packages pytest && pytest tests/python/ -v
 
       - name: Package
         run: cpack --config build/CPackConfig.cmake
@@ -147,10 +178,19 @@ jobs:
             -DROPE_DOWNLOAD_DEPS=ON `
             -DROPE_HARDWARE=cpu `
             -DROPE_USE_LIBTORCH=ON `
+            ${{ inputs.test_all_platforms == true && '-DROPE_BUILD_TESTS=ON' || '' }} `
             -DROPE_PACKAGE_SUFFIX=windows-x64-cpu
 
       - name: Build
         run: cmake --build build --config Release --parallel
+
+      - name: Test (C++)
+        if: ${{ inputs.test_all_platforms == true }}
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Test (Python)
+        if: ${{ inputs.test_all_platforms == true }}
+        run: pip install --quiet pytest && pytest tests/python/ -v
 
       - name: Package
         run: cpack --config build/CPackConfig.cmake -C Release

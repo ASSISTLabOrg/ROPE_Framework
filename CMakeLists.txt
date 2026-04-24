@@ -30,6 +30,7 @@ endif()
 # ---------------------------------------------------------------------------
 option(ROPE_USE_LIBTORCH  "Build the TorchScript / LibTorch backend" ON)
 option(ROPE_BUILD_LEGACY  "Also build the legacy rope_demo target"   OFF)
+option(ROPE_BUILD_TESTS   "Build and register unit tests (CTest)"    OFF)
 
 # ---------------------------------------------------------------------------
 # External dependencies (nlohmann/json, CLI11) via FetchContent
@@ -383,6 +384,14 @@ else()
 endif()
 
 include(CPack)
+
+# ---------------------------------------------------------------------------
+# Unit tests (opt-in with -DROPE_BUILD_TESTS=ON)
+# ---------------------------------------------------------------------------
+if(ROPE_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests/cpp)
+endif()
 
 # ---------------------------------------------------------------------------
 # Legacy build (opt-in with -DROPE_BUILD_LEGACY=ON)

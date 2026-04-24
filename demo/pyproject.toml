@@ -17,6 +17,7 @@ dependencies = [
     "matplotlib",
     "pandas",
     "pymsis",
+    "jupyter",
 ]
 
 [project.optional-dependencies]
