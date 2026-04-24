@@ -1,8 +1,9 @@
-// gen_decoder_pt.cpp — generates tests/fixtures/models/coae_decoder.pt
+// gen_decoder_pt.cpp — generates tests/fixtures/test_models/coae_decoder.pt
 // using the LibTorch version that is actually linked, ensuring compatibility.
 // Built and run by CMake as a CTest FIXTURES_SETUP step.
 
 #include <torch/script.h>
+#include <filesystem>
 #include <iostream>
 
 int main(int argc, char* argv[]) {
@@ -11,6 +12,8 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     try {
+        std::filesystem::create_directories(
+            std::filesystem::path(argv[1]).parent_path());
         torch::jit::Module m("FakeDecoder");
         // Defines forward: (batch, 10) -> (batch, 116640) filled with zeros.
         // 116640 = GRID_LST * GRID_LAT * GRID_ALT = 72 * 36 * 45

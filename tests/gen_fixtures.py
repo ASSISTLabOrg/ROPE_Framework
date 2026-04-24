@@ -3,7 +3,7 @@
 Generate synthetic test fixtures for ROPE unit tests.
 
 Creates:
-  tests/fixtures/models/
+  tests/fixtures/test_models/
     base_model_00.onnx .. base_model_14.onnx  — 15 base temporal models
     meta_model.onnx                            — ensemble meta-model (inner ONNX)
     coae_decoder.onnx                          — COAE decoder (ONNX Runtime path)
@@ -31,7 +31,7 @@ import sys
 from pathlib import Path
 
 ROOT      = Path(__file__).parent
-MODELS    = ROOT / "fixtures" / "models"
+MODELS    = ROOT / "fixtures" / "test_models"
 FIXTURES  = ROOT / "fixtures"
 
 MODELS.mkdir(parents=True, exist_ok=True)

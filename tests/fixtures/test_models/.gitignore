@@ -1,0 +1,3 @@
+# Generated at test time by gen_decoder_pt (tests/gen_decoder_pt.cpp).
+# Regenerate locally with: cmake --build build --parallel && ctest --test-dir build
+coae_decoder.pt

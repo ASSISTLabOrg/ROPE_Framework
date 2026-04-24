@@ -12,7 +12,7 @@ list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
 include(Catch)
 
 set(ROPE_FIXTURE_DIR      "${CMAKE_CURRENT_SOURCE_DIR}/../fixtures")
-set(ROPE_FIXTURE_MODELS   "${ROPE_FIXTURE_DIR}/models")
+set(ROPE_FIXTURE_MODELS   "${ROPE_FIXTURE_DIR}/test_models")
 set(ROPE_CPP_FIXTURE_DIR  "${CMAKE_CURRENT_SOURCE_DIR}/fixtures")
 
 # ---------------------------------------------------------------------------
