@@ -2,14 +2,18 @@
 
 ROPE is a tool for forecasting upper-atmosphere density. Given a start time and a forecast window, it produces a 3-D grid of density and uncertainty estimates that can be queried at any point within the grid.
 
+## Contact Info
+
+Contact [Violet Player](mailto:violet.player@noaa.gov) or [Piyush Mehta](mailto:piyush.mehta@mail.wvu.edu) with any questions. Technical support questions should be directed to [Violet Player](mailto:violet.player@noaa.gov).
+
 ## Requirements
 
 - Linux (x86_64, glibc 2.31+), macOS 12+, or Windows 10+
-- No other software needs to be installed. All runtime libraries are included in the download.
+- Python 3.8+ (python wrapper only)
 
 ## Installation
 
-Download the release archive for your platform and hardware from the [Releases page](../../releases):
+Download the release archive for your platform and hardware from [Google Drive](https://drive.google.com/drive/folders/1gVQ0gqzwfKDaZIuT8tWoCyWQOL_hT4Ol?usp=drive_link)
 
 | Platform | File |
 |----------|------|
@@ -17,7 +21,9 @@ Download the release archive for your platform and hardware from the [Releases p
 | Linux, CUDA 12 | `rope_framework-<version>-linux-x86_64-cuda12.tar.gz` |
 | macOS (Apple Silicon) | `rope_framework-<version>-macos-arm64-cpu.tar.gz` |
 | Windows, CPU | `rope_framework-<version>-windows-x64-cpu.zip` |
-| Windows, CPU | `rope_framework-<version>-windows-x64-cuda12.zip` |
+| Windows, CUDA 12 | `rope_framework-<version>-windows-x64-cuda12.zip` |
+
+**Currently Unsupported:** macOS (Intel), Linux (ARM64), ROCm, CUDA 13+
 
 Extract the archive. The layout inside is:
 
@@ -50,7 +56,28 @@ device = cpu    # or: cuda, cuda:0, cuda:1
 
 This only has an effect on builds that include the LibTorch backend (the CPU and CUDA 12 Linux builds, and the macOS build).
 
-## Usage
+## Python
+
+A Python wrapper is included in the `python/` directory. Copy `rope.py` to your project or add `python/` to your Python path.
+
+```python
+from rope import Rope
+
+r = Rope()
+r.forecast("2024-06-01 00:00:00", horizon=24)
+
+with r:
+    result = r.get(time="2024-06-01T06:00:00", lst=12.5, lat=45.0, alt_km=400.0)
+    print(result)  # {'density': 4.72e-12, 'uncertainty': 3.5e-13}
+```
+
+The wrapper requires Python 3.8 or later and no additional packages.
+
+## C API
+
+For use from C or other languages, `include/rope/capi/rope.h` exposes a stable C-compatible API. The shared library is `lib/librope.so` (Linux), `lib/librope.dylib` (macOS), or `bin/rope.dll` (Windows).
+
+## Command Line Interface
 
 All commands are run through the `rope` executable in `bin/`. On Linux and macOS you may need to prefix commands with `./bin/rope` if the directory is not on your PATH.
 
@@ -111,7 +138,9 @@ rope forecast --config /path/to/rope.conf --start "2024-06-01 00:00:00" --horizo
 
 ## Demo
 
-The `demo/` directory contains a Jupyter notebook that benchmarks ROPE against NRLMSIS-2.1 atmospheric drag across two scenarios: forecast and interpolation throughput (120-hour forecast, 10,000 random point queries), and a 1-day ISS-like orbit integration comparing altitude decay between the two models.
+The `demo/` directory contains a Jupyter notebook that benchmarks ROPE against NRLMSIS-2.1 atmospheric drag across two scenarios: forecast and interpolation throughput (24-hour forecast, 10,000 random point queries), and a 1-day ISS-like orbit integration comparing altitude decay between the two models.
+
+Running the demo scrips is **not** required to use any of the rope library, but may be beneficial as a sanity check to ensure your system is functioning.
 
 To set it up, install the demo dependencies from the archive root:
 
@@ -124,31 +153,10 @@ This requires Python 3.8+ and `pip`. It installs the Python wrapper from `python
 Then open the notebook:
 
 ```
-jupyter notebook demo/benchmark.ipynb
+bash demo/run_benchmark.sh
 ```
 
 The notebook uses `demo/rope.conf`, which is pre-configured to point at the `models/` and `data/` directories in the standard archive layout. If you extracted the archive somewhere else, edit the paths in that file before running.
-
-## Python
-
-A Python wrapper is included in the `python/` directory. Copy `rope.py` to your project or add `python/` to your Python path.
-
-```python
-from rope import Rope
-
-r = Rope()
-r.forecast("2024-06-01 00:00:00", horizon=24)
-
-with r:
-    result = r.get(time="2024-06-01T06:00:00", lst=12.5, lat=45.0, alt_km=400.0)
-    print(result)  # {'density': 4.72e-12, 'uncertainty': 3.5e-13}
-```
-
-The wrapper requires Python 3.8 or later and no additional packages.
-
-## C API
-
-For use from C or other languages, `include/rope/capi/rope.h` exposes a stable C-compatible API. The shared library is `lib/librope.so` (Linux), `lib/librope.dylib` (macOS), or `bin/rope.dll` (Windows).
 
 ## License
 
