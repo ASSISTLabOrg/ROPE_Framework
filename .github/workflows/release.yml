@@ -156,9 +156,42 @@ jobs:
           name: rope-windows-x64-cpu
           path: rope_framework-*.zip
 
+  build-windows-cuda12:
+    name: Windows (x64, cuda12)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install CMake 4.x
+        run: pip install --quiet --break-system-packages "cmake>=4.2"
+      - uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: deps-windows-x64-cuda12-ort1.25.0
+      - run: |
+          cmake -B build `
+            -G "Visual Studio 17 2022" -A x64 `
+            -DROPE_DOWNLOAD_DEPS=ON `
+            -DROPE_HARDWARE=cuda12 `
+            -DROPE_USE_LIBTORCH=OFF `
+            ${{ inputs.test_all_platforms == true && '-DROPE_BUILD_TESTS=ON' || '' }} `
+            -DROPE_PACKAGE_SUFFIX=windows-x64-cuda12 `
+            -DROPE_RELEASE_VERSION=${{ github.ref_name }}
+      - run: cmake --build build --config Release --parallel
+      - name: Test (C++)
+        if: ${{ inputs.test_all_platforms == true }}
+        run: ctest --test-dir build -C Release --output-on-failure
+      - name: Test (Python)
+        if: ${{ inputs.test_all_platforms == true }}
+        run: pip install --quiet pytest && pytest tests/python/ -v
+      - run: cpack --config build/CPackConfig.cmake -C Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rope-windows-x64-cuda12
+          path: rope_framework-*.zip
+
   publish:
     name: Publish GitHub Release
-    needs: [build-linux, build-linux-cuda12, build-macos-arm64, build-windows]
+    needs: [build-linux, build-linux-cuda12, build-macos-arm64, build-windows, build-windows-cuda12]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -178,8 +211,8 @@ jobs:
             The following directories are not included in the release archives and must be downloaded separately:
 
             - `models/` — model artifacts
-            - `data/` — space weather database, IC table, and normalisation statistics
+            - `data/` — drivers, IC table, and normalisation statistics
 
-            **Download:** [Google Drive](https://drive.google.com/placeholder)
+            **Downloads:** [Google Drive](https://drive.google.com/drive/folders/1gVQ0gqzwfKDaZIuT8tWoCyWQOL_hT4Ol?usp=drive_link)
 
             Place both folders alongside the extracted archive before running the server.

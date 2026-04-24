@@ -156,6 +156,50 @@ jobs:
           name: rope-macos-arm64-cpu
           path: rope_framework-*-macos-*.tar.gz
 
+  build-windows-cuda12:
+    name: Windows (x64, cuda12)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install CMake 4.x
+        run: pip install --quiet --break-system-packages "cmake>=4.2"
+
+      - name: Cache downloaded deps
+        uses: actions/cache@v4
+        with:
+          path: build/_deps
+          key: deps-windows-x64-cuda12-ort1.25.0
+
+      - name: Configure
+        run: |
+          cmake -B build `
+            -G "Visual Studio 17 2022" -A x64 `
+            -DROPE_DOWNLOAD_DEPS=ON `
+            -DROPE_HARDWARE=cuda12 `
+            -DROPE_USE_LIBTORCH=OFF `
+            ${{ inputs.test_all_platforms == true && '-DROPE_BUILD_TESTS=ON' || '' }} `
+            -DROPE_PACKAGE_SUFFIX=windows-x64-cuda12
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Test (C++)
+        if: ${{ inputs.test_all_platforms == true }}
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Test (Python)
+        if: ${{ inputs.test_all_platforms == true }}
+        run: pip install --quiet pytest && pytest tests/python/ -v
+
+      - name: Package
+        run: cpack --config build/CPackConfig.cmake -C Release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rope-windows-x64-cuda12
+          path: rope_framework-*-windows-*.zip
+
   build-windows:
     name: Windows (x64, cpu)
     runs-on: windows-2022

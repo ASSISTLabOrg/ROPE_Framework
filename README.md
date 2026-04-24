@@ -16,7 +16,8 @@ Download the release archive for your platform and hardware from the [Releases p
 | Linux, CPU | `rope_framework-<version>-linux-x86_64-cpu.tar.gz` |
 | Linux, CUDA 12 | `rope_framework-<version>-linux-x86_64-cuda12.tar.gz` |
 | macOS (Apple Silicon) | `rope_framework-<version>-macos-arm64-cpu.tar.gz` |
-| Windows | `rope_framework-<version>-windows-x64-cpu.zip` |
+| Windows, CPU | `rope_framework-<version>-windows-x64-cpu.zip` |
+| Windows, CPU | `rope_framework-<version>-windows-x64-cuda12.zip` |
 
 Extract the archive. The layout inside is:
 
@@ -30,7 +31,7 @@ rope_framework-<version>-<platform>/
     include/    C API header (rope.h)
 ```
 
-**Download models and data separately.** The `models/` and `data/` directories are not included in the release archive. Download them from [Google Drive](https://drive.google.com/placeholder) and place them inside the extracted folder alongside `bin/` and `lib/`.
+**Download models and data separately.** The `models/` and `data/` directories are not included in the release archive. Download them from [Google Drive](https://drive.google.com/drive/folders/1gVQ0gqzwfKDaZIuT8tWoCyWQOL_hT4Ol?usp=drive_link) and place them inside the extracted folder alongside `bin/` and `lib/`.
 
 Once in place the directory structure should look like the layout above.
 
