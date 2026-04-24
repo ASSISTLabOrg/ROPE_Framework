@@ -9,7 +9,7 @@ on:
       test_all_platforms:
         description: "Run tests on all platforms (not just Linux cpu)"
         type: boolean
-        default: false
+        default: true
 
 jobs:
   build-linux:
