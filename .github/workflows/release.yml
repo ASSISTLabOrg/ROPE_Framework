@@ -141,8 +141,7 @@ jobs:
             -DROPE_HARDWARE=cpu `
             -DROPE_USE_LIBTORCH=OFF `
             ${{ inputs.test_all_platforms == true && '-DROPE_BUILD_TESTS=ON' || '' }} `
-            -DROPE_PACKAGE_SUFFIX=windows-x64-cpu `
-            -DROPE_RELEASE_VERSION=${{ github.ref_type == 'tag' && github.ref_name || '' }}
+            -DROPE_PACKAGE_SUFFIX=windows-x64-cpu
       - run: cmake --build build --config Release --parallel
       - name: Test (C++)
         if: ${{ inputs.test_all_platforms == true }}
@@ -174,8 +173,7 @@ jobs:
             -DROPE_HARDWARE=cuda12 `
             -DROPE_USE_LIBTORCH=OFF `
             ${{ inputs.test_all_platforms == true && '-DROPE_BUILD_TESTS=ON' || '' }} `
-            -DROPE_PACKAGE_SUFFIX=windows-x64-cuda12 `
-            -DROPE_RELEASE_VERSION=${{ github.ref_type == 'tag' && github.ref_name || '' }}
+            -DROPE_PACKAGE_SUFFIX=windows-x64-cuda12
       - run: cmake --build build --config Release --parallel
       - name: Test (C++)
         if: ${{ inputs.test_all_platforms == true }}
