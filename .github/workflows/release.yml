@@ -37,7 +37,7 @@ jobs:
             -DROPE_USE_LIBTORCH=ON \
             -DROPE_BUILD_TESTS=ON \
             -DROPE_PACKAGE_SUFFIX=linux-x86_64-cpu \
-            -DROPE_RELEASE_VERSION=${{ github.ref_name }}
+            -DROPE_RELEASE_VERSION=${{ github.ref_type == 'tag' && github.ref_name || '' }}
       - run: cmake --build build --parallel
       - name: Test (C++)
         run: ctest --test-dir build --output-on-failure
@@ -70,7 +70,7 @@ jobs:
             -DROPE_USE_LIBTORCH=ON \
             ${{ inputs.test_all_platforms == true && '-DROPE_BUILD_TESTS=ON' || '' }} \
             -DROPE_PACKAGE_SUFFIX=macos-arm64-cpu \
-            -DROPE_RELEASE_VERSION=${{ github.ref_name }}
+            -DROPE_RELEASE_VERSION=${{ github.ref_type == 'tag' && github.ref_name || '' }}
       - run: cmake --build build --parallel
       - name: Test (C++)
         if: ${{ inputs.test_all_platforms == true }}
@@ -109,7 +109,7 @@ jobs:
             -DROPE_USE_LIBTORCH=OFF \
             ${{ inputs.test_all_platforms == true && '-DROPE_BUILD_TESTS=ON' || '' }} \
             -DROPE_PACKAGE_SUFFIX=linux-x86_64-cuda12 \
-            -DROPE_RELEASE_VERSION=${{ github.ref_name }}
+            -DROPE_RELEASE_VERSION=${{ github.ref_type == 'tag' && github.ref_name || '' }}
       - run: cmake --build build --parallel
       - name: Test (C++)
         if: ${{ inputs.test_all_platforms == true }}
@@ -142,7 +142,7 @@ jobs:
             -DROPE_USE_LIBTORCH=OFF `
             ${{ inputs.test_all_platforms == true && '-DROPE_BUILD_TESTS=ON' || '' }} `
             -DROPE_PACKAGE_SUFFIX=windows-x64-cpu `
-            -DROPE_RELEASE_VERSION=${{ github.ref_name }}
+            -DROPE_RELEASE_VERSION=${{ github.ref_type == 'tag' && github.ref_name || '' }}
       - run: cmake --build build --config Release --parallel
       - name: Test (C++)
         if: ${{ inputs.test_all_platforms == true }}
@@ -175,7 +175,7 @@ jobs:
             -DROPE_USE_LIBTORCH=OFF `
             ${{ inputs.test_all_platforms == true && '-DROPE_BUILD_TESTS=ON' || '' }} `
             -DROPE_PACKAGE_SUFFIX=windows-x64-cuda12 `
-            -DROPE_RELEASE_VERSION=${{ github.ref_name }}
+            -DROPE_RELEASE_VERSION=${{ github.ref_type == 'tag' && github.ref_name || '' }}
       - run: cmake --build build --config Release --parallel
       - name: Test (C++)
         if: ${{ inputs.test_all_platforms == true }}
