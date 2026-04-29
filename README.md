@@ -2,7 +2,7 @@
 
 ROPE is a tool for forecasting upper-atmosphere density. Given a start time and a forecast window, it produces a 3-D grid of density and uncertainty estimates that can be queried at any point within the grid.
 
-## Notice
+## Notices
 
 This is a beta release of the ROPE tool. It is not recommended for use in production until the full version is released. Breaking changes to the public API may be introduced during the beta testing phase.
 
