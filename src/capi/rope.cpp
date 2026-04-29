@@ -154,3 +154,24 @@ int rope_query_batch(rope_interp_t* interp,
 void rope_close(rope_interp_t* interp) {
     delete interp;
 }
+
+// ---------------------------------------------------------------------------
+// rope_server_stop
+// ---------------------------------------------------------------------------
+
+int rope_server_stop(const char* sock_path, char* err_buf, int err_len) {
+    try {
+        auto path = sock_path
+            ? std::filesystem::path{sock_path}
+            : rope::platform::default_socket_path();
+        rope::client::IpcClient client{path};
+        client.exit_server();
+        return ROPE_OK;
+    } catch (const std::exception& e) {
+        fill_err(err_buf, err_len, e.what());
+        return classify_exception(&e);
+    } catch (...) {
+        fill_err(err_buf, err_len, "rope_server_stop: unknown error");
+        return ROPE_ERR_INTERNAL;
+    }
+}

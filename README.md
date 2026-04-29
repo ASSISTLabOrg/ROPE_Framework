@@ -2,6 +2,10 @@
 
 ROPE is a tool for forecasting upper-atmosphere density. Given a start time and a forecast window, it produces a 3-D grid of density and uncertainty estimates that can be queried at any point within the grid.
 
+## Notice
+
+This is a beta release of the ROPE tool. It is not recommended for use in production until the full version is released. Breaking changes to the public API may be introduced during the beta testing phase.
+
 ## Contact Info
 
 Contact [Violet Player](mailto:violet.player@noaa.gov) or [Piyush Mehta](mailto:piyush.mehta@mail.wvu.edu) with any questions. Technical support questions should be directed to [Violet Player](mailto:violet.player@noaa.gov).
@@ -37,6 +41,12 @@ rope_framework-<version>-<platform>/
     include/    C API header (rope.h)
 ```
 
+**macOS only:** After extracting, macOS Gatekeeper will block the bundled `.dylib` files with `library load disallowed by system policy`. Clear the quarantine attribute before use:
+
+```
+xattr -r -d com.apple.quarantine rope_framework-<version>-macos-arm64-cpu/
+```
+
 **Download models and data separately.** The `models/` and `data/` directories are not included in the release archive. Download them from [Google Drive](https://drive.google.com/drive/folders/1gVQ0gqzwfKDaZIuT8tWoCyWQOL_hT4Ol?usp=drive_link) and place them inside the extracted folder alongside `bin/` and `lib/`.
 
 Once in place the directory structure should look like the layout above.
@@ -69,7 +79,11 @@ r.forecast("2024-06-01 00:00:00", horizon=24)
 with r:
     result = r.get(time="2024-06-01T06:00:00", lst=12.5, lat=45.0, alt_km=400.0)
     print(result)  # {'density': 4.72e-12, 'uncertainty': 3.5e-13}
+
+r.shutdown()
 ```
+
+The `with` block opens an interpolation handle against the cached grid and closes it on exit. It does not stop the server. Call `r.shutdown()` when you are done to stop the server process. If you forget, the Python wrapper will call it automatically on interpreter exit, and the server will also stop itself after 30 minutes of inactivity. The idle timeout is configurable via `idle_timeout_seconds` in the `[server]` section of `rope.conf`; set it to `0` to disable.
 
 The wrapper requires Python 3.8 or later and no additional packages.
 

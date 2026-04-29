@@ -16,6 +16,7 @@ Typical usage
         print(result)  # {"density": 4.72e-12, "uncertainty": 3.5e-13}
 """
 
+import atexit
 import configparser
 import ctypes
 import json
@@ -120,6 +121,8 @@ class Rope:
         self._qunc = ctypes.c_double()
         self._qerr = ctypes.create_string_buffer(256)
 
+        atexit.register(self.shutdown)
+
     @property
     def device(self) -> str:
         """Active decoder device string (as will be passed to the server)."""
@@ -168,6 +171,12 @@ class Rope:
         """Re-fetch the grid from the server (picks up a new forecast)."""
         self.close()
         self.open()
+
+    def shutdown(self):
+        """Send the exit command to the server, stopping it."""
+        err  = ctypes.create_string_buffer(256)
+        sock = self._socket_path.encode() if self._socket_path else None
+        self._lib.rope_server_stop(sock, err, len(err))
 
     # ------------------------------------------------------------------
     # Server commands (via CLI subprocess)
@@ -288,12 +297,13 @@ class Rope:
         Each parameter is a list of length N.
         Returns a list of N dicts: [{"density": float, "uncertainty": float}, ...].
         """
-        if self._handle is None:
-            self.open()
 
         n = len(times)
         if not (len(lsts) == len(lats) == len(alts_km) == n):
             raise ValueError("all input lists must have the same length")
+
+        if self._handle is None:
+            self.open()
 
         DA      = ctypes.c_double * n
         t_arr   = DA(*(_to_unix(t) for t in times))
@@ -344,6 +354,9 @@ class Rope:
 
         lib.rope_close.restype  = None
         lib.rope_close.argtypes = [ctypes.c_void_p]
+
+        lib.rope_server_stop.restype  = ctypes.c_int
+        lib.rope_server_stop.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int]
 
         return lib
 

@@ -22,12 +22,15 @@
 #include <nlohmann/json.hpp>
 
 #include <atomic>
+#include <chrono>
 #include <csignal>
+#include <cstdint>
 #include <filesystem>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <system_error>
+#include <thread>
 
 using json = nlohmann::json;
 
@@ -324,6 +327,29 @@ void run(const std::filesystem::path& socket_path,
     }
 #endif
 
+    // Idle timeout.
+    using Clock = std::chrono::steady_clock;
+    using Ms    = std::chrono::milliseconds;
+    auto now_ms = []() -> std::int64_t {
+        return std::chrono::duration_cast<Ms>(Clock::now().time_since_epoch()).count();
+    };
+
+    const int idle_timeout_seconds = config.get_int("server.idle_timeout_seconds", 1800);
+    std::atomic<std::int64_t> last_activity_ms{now_ms()};
+
+    std::thread watcher;
+    if (idle_timeout_seconds > 0) {
+        const std::int64_t timeout_ms = static_cast<std::int64_t>(idle_timeout_seconds) * 1000;
+        watcher = std::thread([&last_activity_ms, timeout_ms, &now_ms]() {
+            while (g_running) {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                if (!g_running) break;
+                if (now_ms() - last_activity_ms.load() >= timeout_ms)
+                    g_running = false;
+            }
+        });
+    }
+
     // Accept loop.
     bool exit_requested = false;
 
@@ -335,11 +361,15 @@ void run(const std::filesystem::path& socket_path,
         while (keep_conn && g_running && !exit_requested) {
             try {
                 keep_conn = handle_request(*conn, state, exit_requested);
+                if (keep_conn) last_activity_ms.store(now_ms());
             } catch (const std::exception&) {
                 keep_conn = false;
             }
         }
     }
+
+    if (watcher.joinable())
+        watcher.join();
 }
 
 } // namespace rope::server

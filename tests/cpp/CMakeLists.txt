@@ -99,3 +99,27 @@ if(TARGET rope_forecast)
         catch_discover_tests(rope_pipeline_tests)
     endif()
 endif()
+
+# ---------------------------------------------------------------------------
+# Category C — CLI integration tests (requires ONNX Runtime + Python + pytest)
+# ---------------------------------------------------------------------------
+if(TARGET rope_forecast)
+    find_package(Python3 COMPONENTS Interpreter QUIET)
+    if(Python3_FOUND)
+        add_test(
+            NAME    rope_cli_tests
+            COMMAND ${Python3_EXECUTABLE} -m pytest
+                    ${CMAKE_CURRENT_SOURCE_DIR}/../python/test_cli.py
+                    -v --tb=short
+        )
+        set_tests_properties(rope_cli_tests PROPERTIES
+            ENVIRONMENT
+                "ROPE_EXE=$<TARGET_FILE:rope_exe>;ROPE_FIXTURE_DIR=${ROPE_FIXTURE_DIR}"
+        )
+        if(Torch_FOUND)
+            set_tests_properties(rope_cli_tests PROPERTIES
+                FIXTURES_REQUIRED rope_pipeline_fixtures
+            )
+        endif()
+    endif()
+endif()

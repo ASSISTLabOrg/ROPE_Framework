@@ -92,6 +92,19 @@ ROPE_API int rope_query_batch(rope_interp_t* interp,
  */
 ROPE_API void rope_close(rope_interp_t* interp);
 
+/*
+ * Send an exit command to the server, asking it to shut down.
+ *
+ * sock_path  — path to the server socket.  Pass NULL for the platform default.
+ * err_buf    — buffer for a human-readable error message on failure.
+ * err_len    — size of err_buf in bytes.
+ *
+ * Returns ROPE_OK on success, a non-zero error code on failure.
+ */
+ROPE_API int rope_server_stop(const char* sock_path,
+                               char*       err_buf,
+                               int         err_len);
+
 /* Mode constants */
 #define ROPE_HOLD   0
 #define ROPE_INTERP 1

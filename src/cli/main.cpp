@@ -177,6 +177,10 @@ int main(int argc, char** argv) {
     app.add_option("--socket-path", serve_sock)->group("");
     app.add_option("--config-path", serve_conf)->group("");
 
+    // ---- hidden --socket override (testing / multi-instance use) ----
+    std::string cli_socket;
+    app.add_option("--socket", cli_socket, "Override the server socket path")->group("");
+
     // ---- forecast subcommand ----
     auto* fc = app.add_subcommand("forecast",
                                    "Run a forecast and cache the grid in the server");
@@ -222,7 +226,9 @@ int main(int argc, char** argv) {
     }
 
     // ---- Determine socket and config paths ----
-    fs::path socket_path = rope::platform::default_socket_path();
+    fs::path socket_path = cli_socket.empty()
+        ? rope::platform::default_socket_path()
+        : fs::path{cli_socket};
     fs::path config_path;
 
     if (fc->parsed()) {

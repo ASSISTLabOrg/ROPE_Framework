@@ -259,15 +259,20 @@ target_link_libraries(rope_exe
 if(TARGET rope_forecast)
     target_link_libraries(rope_exe PRIVATE rope_forecast)
 endif()
+if(APPLE)
+    set(_exe_install_rpath "@executable_path/../lib;@loader_path/../lib")
+else()
+    set(_exe_install_rpath "$ORIGIN/../lib")
+endif()
 get_filename_component(ORT_LIB_DIR "${ORT_LIB}" DIRECTORY)
 if(ORT_LIB_DIR)
     set_target_properties(rope_exe PROPERTIES
         BUILD_RPATH  "${ORT_LIB_DIR}"
-        INSTALL_RPATH "$ORIGIN/../lib"
+        INSTALL_RPATH "${_exe_install_rpath}"
     )
 else()
     set_target_properties(rope_exe PROPERTIES
-        INSTALL_RPATH "$ORIGIN/../lib"
+        INSTALL_RPATH "${_exe_install_rpath}"
     )
 endif()
 
@@ -275,6 +280,10 @@ endif()
 # Install rules
 # ---------------------------------------------------------------------------
 include(GNUInstallDirs)
+
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/README.md"
+              "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
+    DESTINATION .)
 
 install(TARGETS rope_exe
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
