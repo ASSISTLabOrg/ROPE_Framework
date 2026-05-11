@@ -22,9 +22,9 @@ ROPE_EXE    = os.environ.get("ROPE_EXE", "rope")
 FIXTURE_DIR = Path(os.environ.get("ROPE_FIXTURE_DIR",
                                    Path(__file__).parent.parent / "fixtures"))
 
-# Must match the sw_test.csv coverage window used by the pipeline tests.
-# sw_test.csv covers 2023-12-31T22:00:00 through 2024-01-01T02:00:00 (5 rows);
-# horizon=3 with seq_len=3 requires exactly (seq_len-1)+horizon = 5 rows.
+# Must match the sw_test.swbin coverage window used by the pipeline tests.
+# sw_test.csv covers 2023-12-31T22:00:00 through 2024-01-01T03:00:00 (6 rows);
+# horizon=3 with seq_len=3 requires (seq_len-1)+(horizon+1) = 6 rows.
 FORECAST_START   = "2024-01-01 00:00:00"
 FORECAST_HORIZON = 3
 QUERY_TIME       = "2024-01-01T01:00:00"
@@ -38,11 +38,13 @@ def _rope(*args, timeout=60):
 
 
 def _write_conf(path: Path, idle_timeout_seconds: int = 30) -> None:
+    # driver_path: explicit binary fixture — bypasses cache manager entirely.
+    # ic_csv is no longer set: the IC table is auto-discovered from exported_dir
+    # (test_models/ic_table.icbin, generated alongside the other fixtures).
     path.write_text(
         f"[paths]\n"
         f"exported_dir = {FIXTURE_DIR / 'test_models'}\n"
-        f"driver_csv   = {FIXTURE_DIR / 'sw_test.csv'}\n"
-        f"ic_csv       = {FIXTURE_DIR / 'ic_test.csv'}\n"
+        f"driver_path  = {FIXTURE_DIR / 'test_models' / 'sw_test.swbin'}\n"
         f"[server]\n"
         f"idle_timeout_seconds = {idle_timeout_seconds}\n"
     )

@@ -27,6 +27,13 @@ jobs:
           apt-get install -y ninja-build gcc-12 g++-12 make ca-certificates python3-pip
           pip3 install --quiet --break-system-packages "cmake>=4.2" pytest
 
+      - name: Install .NET 8 SDK
+        run: |
+          apt-get install -y wget
+          wget -q https://dot.net/v1/dotnet-install.sh
+          bash dotnet-install.sh --channel 8.0 --install-dir /usr/local/dotnet
+          echo "/usr/local/dotnet" >> "$GITHUB_PATH"
+
       - name: Restore cached deps
         uses: actions/cache/restore@v4
         with:
@@ -53,6 +60,14 @@ jobs:
 
       - name: Test (Python)
         run: pytest tests/python/ -v
+
+      - name: Test (C#)
+        run: |
+          dotnet test tests/dotnet/RopeTests.csproj --logger "console;verbosity=normal"
+        env:
+          ROPE_LIB:         ${{ github.workspace }}/build/librope.so
+          ROPE_EXE:         ${{ github.workspace }}/build/rope
+          ROPE_FIXTURE_DIR: ${{ github.workspace }}/tests/fixtures
 
       - name: Package
         run: cpack --config build/CPackConfig.cmake

@@ -27,6 +27,8 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 
+[assembly: System.Runtime.CompilerServices.InternalsVisibleTo("RopeTests")]
+
 namespace RopeFramework;
 
 public class RopeException : Exception
@@ -390,7 +392,7 @@ public sealed unsafe class Rope : IDisposable
         return Encoding.UTF8.GetString(buf, len);
     }
 
-    private static double ToUnix(DateTime dt)
+    internal static double ToUnix(DateTime dt)
     {
         if (dt.Kind == DateTimeKind.Unspecified)
             dt = DateTime.SpecifyKind(dt, DateTimeKind.Utc);
