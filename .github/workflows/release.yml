@@ -25,8 +25,8 @@ jobs:
           pip3 install --quiet --break-system-packages "cmake>=4.2" pytest
       - name: Install .NET 8 SDK
         run: |
-          bash <(wget -qO- https://dot.net/v1/dotnet-install.sh) \
-            --channel 8.0 --install-dir /usr/local/dotnet
+          wget -qO /tmp/dotnet-install.sh https://dot.net/v1/dotnet-install.sh
+          bash /tmp/dotnet-install.sh --channel 8.0 --install-dir /usr/local/dotnet
           echo "/usr/local/dotnet" >> "$GITHUB_PATH"
       - uses: actions/cache@v4
         with:
@@ -87,15 +87,15 @@ jobs:
             -DROPE_DOWNLOAD_DEPS=ON \
             -DROPE_HARDWARE=cpu \
             -DROPE_USE_LIBTORCH=ON \
-            ${{ inputs.test_all_platforms == true && '-DROPE_BUILD_TESTS=ON' || '' }} \
+            ${{ (inputs.test_all_platforms == true || github.event_name == 'push') && '-DROPE_BUILD_TESTS=ON' || '' }} \
             -DROPE_PACKAGE_SUFFIX=macos-arm64-cpu \
             -DROPE_RELEASE_VERSION=${{ github.ref_type == 'tag' && github.ref_name || '' }}
       - run: cmake --build build --parallel
       - name: Test (C++)
-        if: ${{ inputs.test_all_platforms == true }}
+        if: ${{ inputs.test_all_platforms == true || github.event_name == 'push' }}
         run: ctest --test-dir build --output-on-failure
       - name: Test (Python)
-        if: ${{ inputs.test_all_platforms == true }}
+        if: ${{ inputs.test_all_platforms == true || github.event_name == 'push' }}
         run: pytest tests/python/ -v
         env:
           ROPE_EXE:         ${{ github.workspace }}/build/rope
@@ -126,8 +126,8 @@ jobs:
           pip3 install --quiet --break-system-packages "cmake>=4.2" pytest
       - name: Install .NET 8 SDK
         run: |
-          bash <(wget -qO- https://dot.net/v1/dotnet-install.sh) \
-            --channel 8.0 --install-dir /usr/local/dotnet
+          wget -qO /tmp/dotnet-install.sh https://dot.net/v1/dotnet-install.sh
+          bash /tmp/dotnet-install.sh --channel 8.0 --install-dir /usr/local/dotnet
           echo "/usr/local/dotnet" >> "$GITHUB_PATH"
       - uses: actions/cache@v4
         with:
@@ -141,15 +141,15 @@ jobs:
             -DROPE_DOWNLOAD_DEPS=ON \
             -DROPE_HARDWARE=cuda12 \
             -DROPE_USE_LIBTORCH=OFF \
-            ${{ inputs.test_all_platforms == true && '-DROPE_BUILD_TESTS=ON' || '' }} \
+            ${{ (inputs.test_all_platforms == true || github.event_name == 'push') && '-DROPE_BUILD_TESTS=ON' || '' }} \
             -DROPE_PACKAGE_SUFFIX=linux-x86_64-cuda12 \
             -DROPE_RELEASE_VERSION=${{ github.ref_type == 'tag' && github.ref_name || '' }}
       - run: cmake --build build --parallel
       - name: Test (C++)
-        if: ${{ inputs.test_all_platforms == true }}
+        if: ${{ inputs.test_all_platforms == true || github.event_name == 'push' }}
         run: ctest --test-dir build --output-on-failure
       - name: Test (Python)
-        if: ${{ inputs.test_all_platforms == true }}
+        if: ${{ inputs.test_all_platforms == true || github.event_name == 'push' }}
         run: pytest tests/python/ -v
         env:
           ROPE_EXE:         ${{ github.workspace }}/build/rope
@@ -188,14 +188,14 @@ jobs:
             -DROPE_DOWNLOAD_DEPS=ON `
             -DROPE_HARDWARE=cpu `
             -DROPE_USE_LIBTORCH=OFF `
-            ${{ inputs.test_all_platforms == true && '-DROPE_BUILD_TESTS=ON' || '' }} `
+            ${{ (inputs.test_all_platforms == true || github.event_name == 'push') && '-DROPE_BUILD_TESTS=ON' || '' }} `
             -DROPE_PACKAGE_SUFFIX=windows-x64-cpu
       - run: cmake --build build --config Release --parallel
       - name: Test (C++)
-        if: ${{ inputs.test_all_platforms == true }}
+        if: ${{ inputs.test_all_platforms == true || github.event_name == 'push' }}
         run: ctest --test-dir build -C Release --output-on-failure
       - name: Test (Python)
-        if: ${{ inputs.test_all_platforms == true }}
+        if: ${{ inputs.test_all_platforms == true || github.event_name == 'push' }}
         run: pytest tests/python/ -v
         env:
           ROPE_EXE:         ${{ github.workspace }}\build\Release\rope.exe
@@ -233,14 +233,14 @@ jobs:
             -DROPE_DOWNLOAD_DEPS=ON `
             -DROPE_HARDWARE=cuda12 `
             -DROPE_USE_LIBTORCH=OFF `
-            ${{ inputs.test_all_platforms == true && '-DROPE_BUILD_TESTS=ON' || '' }} `
+            ${{ (inputs.test_all_platforms == true || github.event_name == 'push') && '-DROPE_BUILD_TESTS=ON' || '' }} `
             -DROPE_PACKAGE_SUFFIX=windows-x64-cuda12
       - run: cmake --build build --config Release --parallel
       - name: Test (C++)
-        if: ${{ inputs.test_all_platforms == true }}
+        if: ${{ inputs.test_all_platforms == true || github.event_name == 'push' }}
         run: ctest --test-dir build -C Release --output-on-failure
       - name: Test (Python)
-        if: ${{ inputs.test_all_platforms == true }}
+        if: ${{ inputs.test_all_platforms == true || github.event_name == 'push' }}
         run: pytest tests/python/ -v
         env:
           ROPE_EXE:         ${{ github.workspace }}\build\Release\rope.exe
