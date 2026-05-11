@@ -8,11 +8,16 @@
 #include <spawn.h>
 #include <fcntl.h>
 #include <cerrno>
+#include <climits>
 #include <cstring>
 #include <filesystem>
 #include <stdexcept>
 #include <string>
 #include <system_error>
+
+#ifdef __APPLE__
+#  include <mach-o/dyld.h>
+#endif
 
 extern char** environ;
 
@@ -158,6 +163,25 @@ std::unique_ptr<IpcSocket> IpcSocket::connect(const std::filesystem::path& path)
             std::string("IpcSocket::connect: connect(): ") + std::strerror(e));
     }
     return std::make_unique<PosixSocket>(fd);
+}
+
+// ---------------------------------------------------------------------------
+// exe_path
+// ---------------------------------------------------------------------------
+std::filesystem::path exe_path() {
+#ifdef __linux__
+    return std::filesystem::canonical("/proc/self/exe");
+#else
+    // macOS: _NSGetExecutablePath returns the real path of the running binary.
+    char buf[PATH_MAX];
+    uint32_t size = sizeof(buf);
+    if (_NSGetExecutablePath(buf, &size) == 0) {
+        std::error_code ec;
+        auto p = std::filesystem::canonical(buf, ec);
+        return ec ? std::filesystem::path{buf} : p;
+    }
+    throw std::runtime_error("exe_path: _NSGetExecutablePath failed");
+#endif
 }
 
 // ---------------------------------------------------------------------------

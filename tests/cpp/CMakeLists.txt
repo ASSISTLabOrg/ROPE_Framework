@@ -72,6 +72,29 @@ if(TARGET rope_forecast)
         set_target_properties(rope_pipeline_tests PROPERTIES
             BUILD_RPATH "${_test_rpath}"
         )
+
+        # On Windows there is no RPATH; copy ORT (and LibTorch) DLLs into the
+        # binary output directory so the test executable finds them on startup.
+        if(WIN32)
+            file(GLOB _test_ort_dlls "${_ort_rpath}/*.dll")
+            foreach(_dll ${_test_ort_dlls})
+                add_custom_command(TARGET rope_pipeline_tests POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                            "${_dll}" "$<TARGET_FILE_DIR:rope_pipeline_tests>"
+                    VERBATIM
+                )
+            endforeach()
+            if(Torch_FOUND)
+                file(GLOB _test_torch_dlls "${_torch_dir}/*.dll")
+                foreach(_dll ${_test_torch_dlls})
+                    add_custom_command(TARGET rope_pipeline_tests POST_BUILD
+                        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                                "${_dll}" "$<TARGET_FILE_DIR:rope_pipeline_tests>"
+                        VERBATIM
+                    )
+                endforeach()
+            endif()
+        endif()
     endif()
 
     # When LibTorch is linked, generate the .pt fixture at test time using the
@@ -93,32 +116,10 @@ if(TARGET rope_forecast)
         )
     endif()
 
-    # On Windows there is no RPATH equivalent, so ORT (and LibTorch when used)
-    # DLLs are not found at test run time via BUILD_RPATH.  Use
-    # ENVIRONMENT_MODIFICATION to prepend the required DLL directories to PATH
-    # for every discovered test case.  This is encoded into the CTest metadata
-    # at configure time and is reliable regardless of how ctest is invoked.
-    set(_pipeline_test_props "")
     if(Torch_FOUND)
-        list(APPEND _pipeline_test_props FIXTURES_REQUIRED rope_pipeline_fixtures)
-    endif()
-    if(WIN32 AND ORT_LIB)
-        get_filename_component(_win_ort_dll_dir "${ORT_LIB}" DIRECTORY)
-        list(APPEND _pipeline_test_props
-             ENVIRONMENT_MODIFICATION "PATH=list_prepend:${_win_ort_dll_dir}")
-        if(Torch_FOUND AND TORCH_INSTALL_PREFIX)
-            list(APPEND _pipeline_test_props
-                 ENVIRONMENT_MODIFICATION "PATH=list_prepend:${TORCH_INSTALL_PREFIX}/lib")
-        elseif(Torch_FOUND AND TORCH_LIBRARIES)
-            list(GET TORCH_LIBRARIES 0 _first_torch_dll)
-            get_filename_component(_win_torch_dll_dir "${_first_torch_dll}" DIRECTORY)
-            list(APPEND _pipeline_test_props
-                 ENVIRONMENT_MODIFICATION "PATH=list_prepend:${_win_torch_dll_dir}")
-        endif()
-    endif()
-
-    if(_pipeline_test_props)
-        catch_discover_tests(rope_pipeline_tests PROPERTIES ${_pipeline_test_props})
+        catch_discover_tests(rope_pipeline_tests
+            PROPERTIES FIXTURES_REQUIRED rope_pipeline_fixtures
+        )
     else()
         catch_discover_tests(rope_pipeline_tests)
     endif()

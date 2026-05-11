@@ -288,6 +288,29 @@ if(ORT_LIB_DIR)
         BUILD_RPATH  "${_exe_build_rpath}"
         INSTALL_RPATH "${_exe_install_rpath}"
     )
+
+    # On Windows there is no RPATH; copy ORT (and LibTorch) DLLs next to
+    # rope.exe so the server subprocess finds them when spawned by the CLI.
+    if(WIN32)
+        file(GLOB _exe_ort_dlls "${ORT_LIB_DIR}/*.dll")
+        foreach(_dll ${_exe_ort_dlls})
+            add_custom_command(TARGET rope_exe POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                        "${_dll}" "$<TARGET_FILE_DIR:rope_exe>"
+                VERBATIM
+            )
+        endforeach()
+        if(Torch_FOUND AND DEFINED _exe_torch_lib_dir)
+            file(GLOB _exe_torch_dlls "${_exe_torch_lib_dir}/*.dll")
+            foreach(_dll ${_exe_torch_dlls})
+                add_custom_command(TARGET rope_exe POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                            "${_dll}" "$<TARGET_FILE_DIR:rope_exe>"
+                    VERBATIM
+                )
+            endforeach()
+        endif()
+    endif()
 else()
     set_target_properties(rope_exe PROPERTIES
         INSTALL_RPATH "${_exe_install_rpath}"

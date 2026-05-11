@@ -44,16 +44,7 @@ using json   = nlohmann::json;
 // ---------------------------------------------------------------------------
 
 static fs::path exe_path() {
-#ifdef __linux__
-    return fs::canonical("/proc/self/exe");
-#elif defined(_WIN32)
-    char buf[MAX_PATH];
-    GetModuleFileNameA(nullptr, buf, MAX_PATH);
-    return fs::path{buf};
-#else
-    // macOS: use _NSGetExecutablePath or fall back to argv[0]
-    return fs::current_path() / "rope";
-#endif
+    return rope::platform::exe_path();
 }
 
 static fs::path default_config(const fs::path& exe) {

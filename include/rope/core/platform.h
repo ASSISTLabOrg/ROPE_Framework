@@ -52,6 +52,12 @@ public:
 std::filesystem::path default_socket_path();
 
 // ---------------------------------------------------------------------------
+// Returns the absolute, canonical path of the currently running executable.
+// Used by the CLI to re-spawn itself as a server via posix_spawn / CreateProcess.
+// ---------------------------------------------------------------------------
+std::filesystem::path exe_path();
+
+// ---------------------------------------------------------------------------
 // Default directory for cached driver files written by DriverCacheManager.
 //   Linux/macOS: $XDG_CACHE_HOME/rope/drivers or ~/.cache/rope/drivers
 //   Windows:     %LOCALAPPDATA%\rope\drivers

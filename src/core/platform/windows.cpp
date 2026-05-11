@@ -184,6 +184,15 @@ std::unique_ptr<IpcSocket> IpcSocket::connect(const std::filesystem::path& path)
 }
 
 // ---------------------------------------------------------------------------
+// exe_path
+// ---------------------------------------------------------------------------
+std::filesystem::path exe_path() {
+    char buf[MAX_PATH];
+    GetModuleFileNameA(nullptr, buf, MAX_PATH);
+    return std::filesystem::path{buf};
+}
+
+// ---------------------------------------------------------------------------
 // default_cache_dir
 // ---------------------------------------------------------------------------
 std::filesystem::path default_cache_dir() {
