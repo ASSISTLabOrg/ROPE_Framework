@@ -54,6 +54,7 @@ jobs:
       - name: Test (C#)
         run: dotnet test tests/dotnet/RopeTests.csproj --logger "console;verbosity=normal"
         env:
+          DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "1"
           ROPE_LIB:         ${{ github.workspace }}/build/librope.so
           ROPE_EXE:         ${{ github.workspace }}/build/rope
           ROPE_FIXTURE_DIR: ${{ github.workspace }}/tests/fixtures
@@ -156,6 +157,7 @@ jobs:
       - name: Test (C#)
         run: dotnet test tests/dotnet/RopeTests.csproj --logger "console;verbosity=normal"
         env:
+          DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "1"
           ROPE_LIB:         ${{ github.workspace }}/build/librope.so
           ROPE_EXE:         ${{ github.workspace }}/build/rope
           ROPE_FIXTURE_DIR: ${{ github.workspace }}/tests/fixtures

@@ -9,7 +9,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: write
+  actions: write   # list and delete caches
+  contents: read   # list branches (required when explicit permissions are set)
 
 jobs:
   purge-stale-caches:
@@ -24,16 +25,28 @@ jobs:
             const repo  = context.repo.repo;
 
             // Fetch all action caches (paginated).
-            const caches = await github.paginate(
-              github.rest.actions.getActionsCacheList,
-              { owner, repo, per_page: 100 }
-            );
+            let caches;
+            try {
+              caches = await github.paginate(
+                github.rest.actions.getActionsCacheList,
+                { owner, repo, per_page: 100 }
+              );
+            } catch (err) {
+              core.setFailed(`Failed to list caches: ${err.message}`);
+              return;
+            }
 
             // Fetch all live branches.
-            const branches = await github.paginate(
-              github.rest.repos.listBranches,
-              { owner, repo, per_page: 100 }
-            );
+            let branches;
+            try {
+              branches = await github.paginate(
+                github.rest.repos.listBranches,
+                { owner, repo, per_page: 100 }
+              );
+            } catch (err) {
+              core.setFailed(`Failed to list branches: ${err.message}`);
+              return;
+            }
 
             const liveRefs = new Set(
               branches.map(b => `refs/heads/${b.name}`)
