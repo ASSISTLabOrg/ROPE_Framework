@@ -274,8 +274,18 @@ else()
 endif()
 get_filename_component(ORT_LIB_DIR "${ORT_LIB}" DIRECTORY)
 if(ORT_LIB_DIR)
+    set(_exe_build_rpath "${ORT_LIB_DIR}")
+    if(Torch_FOUND)
+        if(TORCH_INSTALL_PREFIX)
+            list(APPEND _exe_build_rpath "${TORCH_INSTALL_PREFIX}/lib")
+        else()
+            list(GET TORCH_LIBRARIES 0 _exe_first_torch)
+            get_filename_component(_exe_torch_lib_dir "${_exe_first_torch}" DIRECTORY)
+            list(APPEND _exe_build_rpath "${_exe_torch_lib_dir}")
+        endif()
+    endif()
     set_target_properties(rope_exe PROPERTIES
-        BUILD_RPATH  "${ORT_LIB_DIR}"
+        BUILD_RPATH  "${_exe_build_rpath}"
         INSTALL_RPATH "${_exe_install_rpath}"
     )
 else()
