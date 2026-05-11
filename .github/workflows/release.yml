@@ -48,6 +48,9 @@ jobs:
         run: ctest --test-dir build --output-on-failure
       - name: Test (Python)
         run: pytest tests/python/ -v
+        env:
+          ROPE_EXE:         ${{ github.workspace }}/build/rope
+          ROPE_FIXTURE_DIR: ${{ github.workspace }}/tests/fixtures
       - name: Test (C#)
         run: dotnet test tests/dotnet/RopeTests.csproj --logger "console;verbosity=normal"
         env:
@@ -93,6 +96,9 @@ jobs:
       - name: Test (Python)
         if: ${{ inputs.test_all_platforms == true }}
         run: pytest tests/python/ -v
+        env:
+          ROPE_EXE:         ${{ github.workspace }}/build/rope
+          ROPE_FIXTURE_DIR: ${{ github.workspace }}/tests/fixtures
       - name: Test (C#)
         run: dotnet test tests/dotnet/RopeTests.csproj --logger "console;verbosity=normal"
         env:
@@ -144,6 +150,9 @@ jobs:
       - name: Test (Python)
         if: ${{ inputs.test_all_platforms == true }}
         run: pytest tests/python/ -v
+        env:
+          ROPE_EXE:         ${{ github.workspace }}/build/rope
+          ROPE_FIXTURE_DIR: ${{ github.workspace }}/tests/fixtures
       - name: Test (C#)
         run: dotnet test tests/dotnet/RopeTests.csproj --logger "console;verbosity=normal"
         env:
@@ -186,6 +195,9 @@ jobs:
       - name: Test (Python)
         if: ${{ inputs.test_all_platforms == true }}
         run: pytest tests/python/ -v
+        env:
+          ROPE_EXE:         ${{ github.workspace }}\build\Release\rope.exe
+          ROPE_FIXTURE_DIR: ${{ github.workspace }}\tests\fixtures
       - name: Test (C#)
         run: dotnet test tests/dotnet/RopeTests.csproj --logger "console;verbosity=normal"
         env:
@@ -228,6 +240,9 @@ jobs:
       - name: Test (Python)
         if: ${{ inputs.test_all_platforms == true }}
         run: pytest tests/python/ -v
+        env:
+          ROPE_EXE:         ${{ github.workspace }}\build\Release\rope.exe
+          ROPE_FIXTURE_DIR: ${{ github.workspace }}\tests\fixtures
       - name: Test (C#)
         run: dotnet test tests/dotnet/RopeTests.csproj --logger "console;verbosity=normal"
         env:

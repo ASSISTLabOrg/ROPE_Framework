@@ -60,6 +60,9 @@ jobs:
 
       - name: Test (Python)
         run: pytest tests/python/ -v
+        env:
+          ROPE_EXE:         ${{ github.workspace }}/build/rope
+          ROPE_FIXTURE_DIR: ${{ github.workspace }}/tests/fixtures
 
       - name: Test (C#)
         run: |

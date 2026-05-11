@@ -13,14 +13,22 @@ manual runs from the build directory):
 import json
 import os
 import subprocess
+import sys
 import time
 from pathlib import Path
 
 import pytest
 
-ROPE_EXE    = os.environ.get("ROPE_EXE", "rope")
+# Derive sensible defaults so `pytest tests/python/` works from the project
+# root without needing env vars set (CTest sets them explicitly in CI).
+_project_root = Path(__file__).parent.parent.parent
+_default_exe  = _project_root / "build" / (
+    "rope.exe" if sys.platform == "win32" else "rope"
+)
+
+ROPE_EXE    = os.environ.get("ROPE_EXE", str(_default_exe))
 FIXTURE_DIR = Path(os.environ.get("ROPE_FIXTURE_DIR",
-                                   Path(__file__).parent.parent / "fixtures"))
+                                   _project_root / "tests" / "fixtures"))
 
 # Must match the sw_test.swbin coverage window used by the pipeline tests.
 # sw_test.csv covers 2023-12-31T22:00:00 through 2024-01-01T03:00:00 (6 rows);
