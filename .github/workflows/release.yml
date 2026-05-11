@@ -72,8 +72,10 @@ jobs:
       MACOSX_DEPLOYMENT_TARGET: "12.0"
     steps:
       - uses: actions/checkout@v4
-      - name: Install CMake 4.x
-        run: pip3 install --quiet --break-system-packages "cmake>=4.2" pytest
+      - name: Install CMake 4.x and libomp
+        run: |
+          pip3 install --quiet --break-system-packages "cmake>=4.2" pytest
+          brew install libomp
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
@@ -193,10 +195,14 @@ jobs:
       - run: cmake --build build --config Release --parallel
       - name: Test (C++)
         if: ${{ inputs.test_all_platforms == true || github.event_name == 'push' }}
-        run: ctest --test-dir build -C Release --output-on-failure
+        run: |
+          $env:Path = "${{ github.workspace }}\build\_deps\onnxruntime-src\lib;$env:Path"
+          ctest --test-dir build -C Release --output-on-failure
       - name: Test (Python)
         if: ${{ inputs.test_all_platforms == true || github.event_name == 'push' }}
-        run: pytest tests/python/ -v
+        run: |
+          $env:Path = "${{ github.workspace }}\build\_deps\onnxruntime-src\lib;$env:Path"
+          pytest tests/python/ -v
         env:
           ROPE_EXE:         ${{ github.workspace }}\build\Release\rope.exe
           ROPE_FIXTURE_DIR: ${{ github.workspace }}\tests\fixtures
@@ -238,10 +244,14 @@ jobs:
       - run: cmake --build build --config Release --parallel
       - name: Test (C++)
         if: ${{ inputs.test_all_platforms == true || github.event_name == 'push' }}
-        run: ctest --test-dir build -C Release --output-on-failure
+        run: |
+          $env:Path = "${{ github.workspace }}\build\_deps\onnxruntime-src\lib;$env:Path"
+          ctest --test-dir build -C Release --output-on-failure
       - name: Test (Python)
         if: ${{ inputs.test_all_platforms == true || github.event_name == 'push' }}
-        run: pytest tests/python/ -v
+        run: |
+          $env:Path = "${{ github.workspace }}\build\_deps\onnxruntime-src\lib;$env:Path"
+          pytest tests/python/ -v
         env:
           ROPE_EXE:         ${{ github.workspace }}\build\Release\rope.exe
           ROPE_FIXTURE_DIR: ${{ github.workspace }}\tests\fixtures

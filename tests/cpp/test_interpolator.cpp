@@ -94,7 +94,7 @@ TEST_CASE("GridInterpolator: query at exact time step equals hold") {
     CHECK_THAT(r_interp.uncertainty, WithinRel(r_hold.uncertainty, 1e-9));
 }
 
-TEST_CASE("GridInterpolator: LST is periodic — query at 25h == query at 1h") {
+TEST_CASE("GridInterpolator: LST is periodic - query at 25h equals query at 1h") {
     auto grid = make_uniform_grid();
     GridInterpolator gi(grid);
 

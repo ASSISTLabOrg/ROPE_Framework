@@ -167,8 +167,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install CMake 4.x
-        run: pip3 install --quiet --break-system-packages "cmake>=4.2" pytest
+      - name: Install CMake 4.x and libomp
+        run: |
+          pip3 install --quiet --break-system-packages "cmake>=4.2" pytest
+          brew install libomp
 
       - name: Restore cached deps
         uses: actions/cache/restore@v4
@@ -248,11 +250,18 @@ jobs:
 
       - name: Test (C++)
         if: ${{ inputs.test_all_platforms == true }}
-        run: ctest --test-dir build -C Release --output-on-failure
+        run: |
+          $env:Path = "${{ github.workspace }}\build\_deps\onnxruntime-src\lib;$env:Path"
+          ctest --test-dir build -C Release --output-on-failure
 
       - name: Test (Python)
         if: ${{ inputs.test_all_platforms == true }}
-        run: pytest tests/python/ -v
+        run: |
+          $env:Path = "${{ github.workspace }}\build\_deps\onnxruntime-src\lib;$env:Path"
+          pytest tests/python/ -v
+        env:
+          ROPE_EXE:         ${{ github.workspace }}\build\Release\rope.exe
+          ROPE_FIXTURE_DIR: ${{ github.workspace }}\tests\fixtures
 
       - name: Package
         run: cpack --config build/CPackConfig.cmake -C Release
@@ -305,11 +314,18 @@ jobs:
 
       - name: Test (C++)
         if: ${{ inputs.test_all_platforms == true }}
-        run: ctest --test-dir build -C Release --output-on-failure
+        run: |
+          $env:Path = "${{ github.workspace }}\build\_deps\onnxruntime-src\lib;$env:Path"
+          ctest --test-dir build -C Release --output-on-failure
 
       - name: Test (Python)
         if: ${{ inputs.test_all_platforms == true }}
-        run: pytest tests/python/ -v
+        run: |
+          $env:Path = "${{ github.workspace }}\build\_deps\onnxruntime-src\lib;$env:Path"
+          pytest tests/python/ -v
+        env:
+          ROPE_EXE:         ${{ github.workspace }}\build\Release\rope.exe
+          ROPE_FIXTURE_DIR: ${{ github.workspace }}\tests\fixtures
 
       - name: Package
         run: cpack --config build/CPackConfig.cmake -C Release
