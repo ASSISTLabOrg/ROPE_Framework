@@ -146,9 +146,17 @@ add_library(rope_io STATIC
     src/io/csv_reader.cpp
     src/io/config_reader.cpp
     src/io/driver_db.cpp
+    src/io/driver_bin.cpp
+    src/io/driver_config.cpp
+    src/io/driver_cache.cpp
     src/io/ic_table.cpp
+    src/io/ic_bin.cpp
+    src/io/ic_config.cpp
 )
-target_link_libraries(rope_io PUBLIC rope_core)
+target_link_libraries(rope_io
+    PUBLIC  rope_core
+    PRIVATE nlohmann_json::nlohmann_json
+)
 
 # ---------------------------------------------------------------------------
 # rope_interpolate — in-memory grid interpolation
@@ -355,13 +363,18 @@ if(ROPE_MODELS_DIR AND EXISTS "${ROPE_MODELS_DIR}")
     install(DIRECTORY "${ROPE_MODELS_DIR}/" DESTINATION models/exported)
 endif()
 
-# Data files (IC table, space weather CSV, stats tensors)
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/data")
-    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/data/" DESTINATION data)
+# Space-weather binary (bundled historical data; used as driver_path override
+# while the online CelesTrak conversion stub is pending).
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/data/sw_celestrack_1957.swbin")
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/data/sw_celestrack_1957.swbin"
+        DESTINATION data)
 endif()
 
 # Python binding
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/python/" DESTINATION python)
+
+# .NET binding
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dotnet/" DESTINATION dotnet)
 
 # Python demo
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/demo/pyproject.toml")

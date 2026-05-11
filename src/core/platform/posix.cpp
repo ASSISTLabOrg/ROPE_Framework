@@ -161,6 +161,17 @@ std::unique_ptr<IpcSocket> IpcSocket::connect(const std::filesystem::path& path)
 }
 
 // ---------------------------------------------------------------------------
+// default_cache_dir
+// ---------------------------------------------------------------------------
+std::filesystem::path default_cache_dir() {
+    if (const char* xdg = std::getenv("XDG_CACHE_HOME"))
+        return std::filesystem::path{xdg} / "rope" / "drivers";
+    if (const char* home = std::getenv("HOME"))
+        return std::filesystem::path{home} / ".cache" / "rope" / "drivers";
+    return std::filesystem::temp_directory_path() / "rope" / "drivers";
+}
+
+// ---------------------------------------------------------------------------
 // default_socket_path
 // ---------------------------------------------------------------------------
 std::filesystem::path default_socket_path() {

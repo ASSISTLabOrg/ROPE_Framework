@@ -22,22 +22,24 @@
 namespace rope::forecast {
 
 // ---------------------------------------------------------------------------
-// Selector for which driver columns to extract from DriverRow.
-// Must match the training feature set in stats_ts.
+// Fill driver features from DriverRow according to a runtime column list.
+// Throws std::runtime_error on an unknown column name.
 // ---------------------------------------------------------------------------
-enum class DriverCols { Six, Seven };
-
-inline int driver_dim(DriverCols dc) { return (dc == DriverCols::Six) ? 6 : 7; }
-
-inline void fill_driver(const io::DriverRow& row, DriverCols dc, float* out) {
-    out[0] = row.f10;
-    out[1] = row.kp;
-    out[2] = row.t1;
-    out[3] = row.t2;
-    out[4] = row.t3;
-    out[5] = row.t4;
-    if (dc == DriverCols::Seven)
-        out[6] = row.doy;
+inline void fill_driver(const io::DriverRow&             row,
+                        const std::vector<std::string>&  cols,
+                        float*                           out) {
+    for (int i = 0; i < static_cast<int>(cols.size()); ++i) {
+        const auto& c = cols[i];
+        if      (c == "f10")      out[i] = row.f10;
+        else if (c == "kp")       out[i] = row.kp;
+        else if (c == "t1")       out[i] = row.t1;
+        else if (c == "t2")       out[i] = row.t2;
+        else if (c == "t3")       out[i] = row.t3;
+        else if (c == "t4")       out[i] = row.t4;
+        else if (c == "doy")      out[i] = row.doy;
+        else if (c == "hour_int") out[i] = static_cast<float>(row.hour_int);
+        else throw std::runtime_error("fill_driver: unknown column '" + c + "'");
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -45,18 +47,20 @@ inline void fill_driver(const io::DriverRow& row, DriverCols dc, float* out) {
 // ---------------------------------------------------------------------------
 class SequenceBuilder {
 public:
-    SequenceBuilder(const io::FeatureNormalizer& norm,
-                    const io::ICTable&           ic,
-                    DriverCols                   driver_cols,
-                    int                          seq_len)
-        : norm_(norm), ic_(ic), dc_(driver_cols), S_(seq_len)
+    SequenceBuilder(const io::FeatureNormalizer&     norm,
+                    const io::ICTable&               ic,
+                    std::vector<std::string>         driver_cols,
+                    int                              seq_len)
+        : norm_(norm), ic_(ic), driver_cols_(std::move(driver_cols)), S_(seq_len)
     {
         K_  = norm_.latent_dim();
         D_  = norm_.total_dim();
         Dd_ = norm_.driver_dim();
-        if (Dd_ != driver_dim(dc_))
+        if (Dd_ != static_cast<int>(driver_cols_.size()))
             throw std::runtime_error(
-                "SequenceBuilder: stats driver_dim does not match DriverCols");
+                "SequenceBuilder: stats driver_dim=" + std::to_string(Dd_) +
+                " does not match driver_cols count=" +
+                std::to_string(driver_cols_.size()));
     }
 
     // Build X_init_norm: (S, D) normalized from the first S history rows.
@@ -76,7 +80,7 @@ public:
             for (int k = 0; k < K_; ++k)
                 dest[k] = coeffs[k];
 
-            fill_driver(row, dc_, dest + K_);
+            fill_driver(row, driver_cols_, dest + K_);
             norm_.norm_full_inplace(dest);
         }
         return X;
@@ -106,7 +110,7 @@ public:
 
             float* last_row = curr + (S_ - 1) * D_;
             std::fill(last_row, last_row + K_, 0.0f);
-            fill_driver(forecast_rows[t], dc_, drv.data());
+            fill_driver(forecast_rows[t], driver_cols_, drv.data());
             norm_.norm_driver_inplace(drv.data());
             std::copy(drv.begin(), drv.end(), last_row + K_);
         }
@@ -120,7 +124,7 @@ public:
 private:
     const io::FeatureNormalizer& norm_;
     const io::ICTable&           ic_;
-    DriverCols                   dc_;
+    std::vector<std::string>     driver_cols_;
     int                          S_, K_, D_, Dd_;
 };
 

@@ -12,6 +12,8 @@ on:
         default: false
 
 jobs:
+  # ── Linux CPU ─────────────────────────────────────────────────────────────
+  # Runs on every push/PR — this is the primary CI gate.
   build-linux:
     name: Linux (x86_64, cpu)
     runs-on: ubuntu-22.04
@@ -25,8 +27,8 @@ jobs:
           apt-get install -y ninja-build gcc-12 g++-12 make ca-certificates python3-pip
           pip3 install --quiet --break-system-packages "cmake>=4.2" pytest
 
-      - name: Cache downloaded deps
-        uses: actions/cache@v4
+      - name: Restore cached deps
+        uses: actions/cache/restore@v4
         with:
           path: build/_deps
           key: deps-linux-x64-cpu-ort1.25.0-torch2.7.0
@@ -55,14 +57,28 @@ jobs:
       - name: Package
         run: cpack --config build/CPackConfig.cmake
 
+      # Save cache only on main — feature branches restore but never write,
+      # so total cache entries stay capped at one per variant.
+      - name: Save deps cache
+        if: always() && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: build/_deps
+          key: deps-linux-x64-cpu-ort1.25.0-torch2.7.0
+
       - uses: actions/upload-artifact@v4
         with:
           name: rope-linux-x86_64-cpu
           path: rope_framework-*-linux-*.tar.gz
           retention-days: 1
 
+  # ── Linux CUDA 12 ─────────────────────────────────────────────────────────
+  # Compilation-only check for the CUDA variant; skipped on feature branches.
   build-linux-cuda12:
     name: Linux (x86_64, cuda12)
+    if: >-
+      github.ref == 'refs/heads/main' ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-22.04
     container: debian:bookworm
     steps:
@@ -74,8 +90,8 @@ jobs:
           apt-get install -y ninja-build gcc-12 g++-12 make ca-certificates python3-pip
           pip3 install --quiet --break-system-packages "cmake>=4.2" pytest
 
-      - name: Cache downloaded deps
-        uses: actions/cache@v4
+      - name: Restore cached deps
+        uses: actions/cache/restore@v4
         with:
           path: build/_deps
           key: deps-linux-x64-cuda12-ort1.25.0
@@ -106,14 +122,26 @@ jobs:
       - name: Package
         run: cpack --config build/CPackConfig.cmake
 
+      - name: Save deps cache
+        if: always() && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: build/_deps
+          key: deps-linux-x64-cuda12-ort1.25.0
+
       - uses: actions/upload-artifact@v4
         with:
           name: rope-linux-x86_64-cuda12
           path: rope_framework-*-linux-*.tar.gz
           retention-days: 1
 
+  # ── macOS arm64 ───────────────────────────────────────────────────────────
+  # Skipped on feature branches to avoid accumulating macOS cache copies.
   build-macos-arm64:
     name: macOS (arm64, cpu)
+    if: >-
+      github.ref == 'refs/heads/main' ||
+      github.event_name == 'workflow_dispatch'
     runs-on: macos-14
     env:
       MACOSX_DEPLOYMENT_TARGET: "12.0"
@@ -123,8 +151,8 @@ jobs:
       - name: Install CMake 4.x
         run: pip3 install --quiet --break-system-packages "cmake>=4.2" pytest
 
-      - name: Cache downloaded deps
-        uses: actions/cache@v4
+      - name: Restore cached deps
+        uses: actions/cache/restore@v4
         with:
           path: build/_deps
           key: deps-macos-arm64-cpu-ort1.25.0-torch2.7.0
@@ -153,14 +181,26 @@ jobs:
       - name: Package
         run: cpack --config build/CPackConfig.cmake
 
+      - name: Save deps cache
+        if: always() && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: build/_deps
+          key: deps-macos-arm64-cpu-ort1.25.0-torch2.7.0
+
       - uses: actions/upload-artifact@v4
         with:
           name: rope-macos-arm64-cpu
           path: rope_framework-*-macos-*.tar.gz
           retention-days: 1
 
+  # ── Windows CUDA 12 ───────────────────────────────────────────────────────
+  # Skipped on feature branches.
   build-windows-cuda12:
     name: Windows (x64, cuda12)
+    if: >-
+      github.ref == 'refs/heads/main' ||
+      github.event_name == 'workflow_dispatch'
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
@@ -168,8 +208,8 @@ jobs:
       - name: Install CMake 4.x
         run: pip install --quiet --break-system-packages "cmake>=4.2" pytest
 
-      - name: Cache downloaded deps
-        uses: actions/cache@v4
+      - name: Restore cached deps
+        uses: actions/cache/restore@v4
         with:
           path: build/_deps
           key: deps-windows-x64-cuda12-ort1.25.0
@@ -198,14 +238,26 @@ jobs:
       - name: Package
         run: cpack --config build/CPackConfig.cmake -C Release
 
+      - name: Save deps cache
+        if: always() && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: build/_deps
+          key: deps-windows-x64-cuda12-ort1.25.0
+
       - uses: actions/upload-artifact@v4
         with:
           name: rope-windows-x64-cuda12
           path: rope_framework-*-windows-*.zip
           retention-days: 1
 
+  # ── Windows CPU ───────────────────────────────────────────────────────────
+  # Skipped on feature branches.
   build-windows:
     name: Windows (x64, cpu)
+    if: >-
+      github.ref == 'refs/heads/main' ||
+      github.event_name == 'workflow_dispatch'
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
@@ -213,8 +265,8 @@ jobs:
       - name: Install CMake 4.x
         run: pip install --quiet --break-system-packages "cmake>=4.2" pytest
 
-      - name: Cache downloaded deps
-        uses: actions/cache@v4
+      - name: Restore cached deps
+        uses: actions/cache/restore@v4
         with:
           path: build/_deps
           key: deps-windows-x64-cpu-ort1.25.0-torch2.7.0
@@ -242,6 +294,13 @@ jobs:
 
       - name: Package
         run: cpack --config build/CPackConfig.cmake -C Release
+
+      - name: Save deps cache
+        if: always() && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@v4
+        with:
+          path: build/_deps
+          key: deps-windows-x64-cpu-ort1.25.0-torch2.7.0
 
       - uses: actions/upload-artifact@v4
         with:

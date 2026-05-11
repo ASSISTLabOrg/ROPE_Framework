@@ -8,8 +8,7 @@ namespace fs = std::filesystem;
 static rope::forecast::Config make_test_config() {
     rope::forecast::Config cfg;
     cfg.exported_dir          = fs::path(ROPE_FIXTURE_MODELS);
-    cfg.driver_csv            = fs::path(ROPE_FIXTURE_DIR) / "sw_test.csv";
-    cfg.ic_csv                = fs::path(ROPE_FIXTURE_DIR) / "ic_test.csv";
+    cfg.driver_path           = fs::path(ROPE_FIXTURE_DIR) / "sw_test.csv";
     cfg.intra_threads_base    = 1;
     cfg.intra_threads_meta    = 1;
     cfg.intra_threads_decoder = 1;
@@ -18,8 +17,8 @@ static rope::forecast::Config make_test_config() {
 }
 
 // Start time that falls within the space weather fixture (sw_test.csv covers
-// 2023-12-31T22:00:00 through 2024-01-01T02:00:00, 5 hourly rows).
-// Horizon=3 with seq_len=3 requires exactly (S-1)+H = 2+3 = 5 rows.
+// 2023-12-31T22:00:00 through 2024-01-01T03:00:00, 6 hourly rows).
+// Horizon=3 with seq_len=3 requires (S-1)+(H+1) = 2+4 = 6 rows.
 static const char* TEST_START = "2024-01-01 00:00:00";
 static constexpr int TEST_HORIZON = 3;
 

@@ -184,6 +184,15 @@ std::unique_ptr<IpcSocket> IpcSocket::connect(const std::filesystem::path& path)
 }
 
 // ---------------------------------------------------------------------------
+// default_cache_dir
+// ---------------------------------------------------------------------------
+std::filesystem::path default_cache_dir() {
+    if (const char* appdata = std::getenv("LOCALAPPDATA"))
+        return std::filesystem::path{appdata} / "rope" / "drivers";
+    return std::filesystem::temp_directory_path() / "rope" / "drivers";
+}
+
+// ---------------------------------------------------------------------------
 // default_socket_path
 // ---------------------------------------------------------------------------
 std::filesystem::path default_socket_path() {

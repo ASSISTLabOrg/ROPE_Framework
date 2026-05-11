@@ -1,0 +1,415 @@
+#include "rope/io/driver_cache.h"
+#include "rope/core/datetime.h"
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <limits>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+namespace rope::io {
+
+namespace fs = std::filesystem;
+
+// ---------------------------------------------------------------------------
+// Source registry
+// ---------------------------------------------------------------------------
+const std::unordered_map<std::string, DriverSource>& known_sources() {
+    static const std::unordered_map<std::string, DriverSource> s = {
+        {
+            "celestrak_sw",
+            {
+                "https://celestrak.org/SpaceData/SW-Last5Years.csv",
+                "CelesTrak space weather, last 5 years (hourly)"
+            }
+        },
+        {
+            "celestrak_sw_all",
+            {
+                "https://celestrak.org/SpaceData/SW-All.csv",
+                "CelesTrak space weather, full historical record (hourly)"
+            }
+        },
+    };
+    return s;
+}
+
+// ---------------------------------------------------------------------------
+// DriverCacheManager
+// ---------------------------------------------------------------------------
+DriverCacheManager::DriverCacheManager(fs::path cache_dir, int max_age_hours)
+    : cache_dir_(std::move(cache_dir))
+    , max_age_(std::chrono::seconds(
+          static_cast<std::chrono::seconds::rep>(max_age_hours) * 3600))
+{}
+
+fs::path DriverCacheManager::get_path(const std::string& source) {
+    const auto& sources = known_sources();
+    if (sources.find(source) == sources.end())
+        throw std::runtime_error(
+            "DriverCacheManager: unknown source '" + source + "'. "
+            "Known sources: celestrak_sw, celestrak_sw_all");
+
+    fs::path dest = cache_dir_ / (source + ".swbin");
+
+    if (!fs::exists(dest) || is_stale(dest)) {
+        try {
+            refresh(source, dest);
+        } catch (const std::exception& e) {
+            if (fs::exists(dest)) {
+                // Fall back to stale cache rather than failing hard.
+                return dest;
+            }
+            throw;
+        }
+    }
+    return dest;
+}
+
+bool DriverCacheManager::is_stale(const fs::path& path) const {
+    using Clock = std::chrono::file_clock;
+    auto mtime  = fs::last_write_time(path);
+    auto age    = Clock::now() - mtime;
+    return age > max_age_;
+}
+
+void DriverCacheManager::refresh(const std::string& source,
+                                 const fs::path& dest) {
+    std::error_code ec;
+    fs::create_directories(dest.parent_path(), ec);
+
+    const auto& entry = known_sources().at(source);
+    std::string raw   = download(entry.url);
+    convert_and_write(raw, dest);
+}
+
+std::string DriverCacheManager::download(const std::string& /*url*/) {
+    // TODO: implement using cpp-httplib + OpenSSL.
+    throw std::runtime_error(
+        "DriverCacheManager::download: HTTP client not yet implemented. "
+        "Set 'driver_path' in rope.conf to point to a local driver file "
+        "and bypass the cache manager.");
+}
+
+// ─── PCHIP interpolation helpers (Fritsch-Carlson algorithm) ─────────────────
+// Matches scipy.interpolate.PchipInterpolator behaviour: extrapolate=False
+// returns NaN for query points outside [x.front(), x.back()].
+
+namespace {
+
+static double pchip_endpoint(double h0, double h1, double m0, double m1) {
+    double d = ((2.0*h0 + h1)*m0 - h0*m1) / (h0 + h1);
+    if (std::signbit(d) != std::signbit(m0))
+        d = 0.0;
+    if (std::signbit(m0) != std::signbit(m1) && std::abs(d) > 3.0*std::abs(m0))
+        d = 3.0*m0;
+    return d;
+}
+
+// Compute PCHIP monotone slopes at each knot.
+static std::vector<double> pchip_slopes(const std::vector<double>& x,
+                                         const std::vector<double>& y) {
+    const int n = static_cast<int>(x.size());
+    std::vector<double> d(n, 0.0);
+    if (n < 2) return d;
+    if (n == 2) {
+        double m = (y[1] - y[0]) / (x[1] - x[0]);
+        d[0] = d[1] = m;
+        return d;
+    }
+
+    std::vector<double> h(n-1), delta(n-1);
+    for (int i = 0; i < n-1; ++i) {
+        h[i]     = x[i+1] - x[i];
+        delta[i] = (y[i+1] - y[i]) / h[i];
+    }
+
+    // Interior slopes: weighted harmonic mean (preserves monotonicity).
+    for (int i = 1; i < n-1; ++i) {
+        if (delta[i-1] * delta[i] <= 0.0) {
+            d[i] = 0.0;
+        } else {
+            double w1 = 2.0*h[i] + h[i-1];
+            double w2 = h[i] + 2.0*h[i-1];
+            d[i] = (w1 + w2) / (w1/delta[i-1] + w2/delta[i]);
+        }
+    }
+    // Endpoint slopes (n >= 3 guaranteed since n=2 returned early above).
+    d[0]   = pchip_endpoint(h[0],   h[1],   delta[0],   delta[1]);
+    d[n-1] = pchip_endpoint(h[n-2], h[n-3], delta[n-2], delta[n-3]);
+    return d;
+}
+
+// Evaluate PCHIP at xq; returns NaN if out of [x[0], x[n-1]].
+static double pchip_eval(const std::vector<double>& x,
+                          const std::vector<double>& y,
+                          const std::vector<double>& d,
+                          double xq) {
+    const int n = static_cast<int>(x.size());
+    if (n < 1) return std::numeric_limits<double>::quiet_NaN();
+    if (xq < x[0] || xq > x[n-1])
+        return std::numeric_limits<double>::quiet_NaN();
+
+    // Binary search for interval.
+    int k = static_cast<int>(
+        std::upper_bound(x.begin(), x.end(), xq) - x.begin()) - 1;
+    if (k >= n-1) k = n-2;
+    if (k < 0)    k = 0;
+
+    double hk = x[k+1] - x[k];
+    double t  = (xq - x[k]) / hk;
+    double t2 = t*t, t3 = t2*t;
+    double h00 =  2.0*t3 - 3.0*t2 + 1.0;
+    double h10 =      t3 - 2.0*t2 + t;
+    double h01 = -2.0*t3 + 3.0*t2;
+    double h11 =      t3 -     t2;
+    return h00*y[k] + h10*hk*d[k] + h01*y[k+1] + h11*hk*d[k+1];
+}
+
+// ─── CelesTrak CSV parsing ────────────────────────────────────────────────────
+
+static std::string_view trim(std::string_view sv) {
+    while (!sv.empty() && (sv.front() == ' ' || sv.front() == '\r' || sv.front() == '\t'))
+        sv.remove_prefix(1);
+    while (!sv.empty() && (sv.back() == ' ' || sv.back() == '\r' || sv.back() == '\t'))
+        sv.remove_suffix(1);
+    return sv;
+}
+
+static std::vector<std::string> split_csv(const std::string& line) {
+    std::vector<std::string> out;
+    std::string field;
+    for (char c : line) {
+        if (c == ',') { out.push_back(field); field.clear(); }
+        else          { field += c; }
+    }
+    out.push_back(field);
+    return out;
+}
+
+struct CelRow {
+    int    year, month, day;   // from DATE column
+    double f107;               // F10.7_OBS (NaN if missing)
+    double kp[8];              // KP1..KP8 in raw tenths (NaN if missing)
+};
+
+static std::vector<CelRow> parse_celestrak(const std::string& raw) {
+    std::istringstream ss(raw);
+    std::string line;
+
+    // Skip to the header line (starts with "DATE").
+    std::vector<std::string> header;
+    while (std::getline(ss, line)) {
+        auto sv = trim(line);
+        if (sv.starts_with("DATE")) {
+            header = split_csv(std::string(sv));
+            break;
+        }
+    }
+    if (header.empty())
+        throw std::runtime_error(
+            "DriverCacheManager::convert_and_write: no DATE header found");
+
+    // Find column indices.
+    auto col_idx = [&](const std::string& name) -> int {
+        for (int i = 0; i < static_cast<int>(header.size()); ++i)
+            if (std::string(trim(header[i])) == name) return i;
+        return -1;
+    };
+
+    const int ci_date = col_idx("DATE");
+    const int ci_f107 = col_idx("F10.7_OBS");
+    int ci_kp[8];
+    for (int k = 0; k < 8; ++k)
+        ci_kp[k] = col_idx("KP" + std::to_string(k+1));
+
+    if (ci_date < 0) throw std::runtime_error("convert_and_write: missing DATE column");
+    if (ci_f107 < 0) throw std::runtime_error("convert_and_write: missing F10.7_OBS column");
+    for (int k = 0; k < 8; ++k)
+        if (ci_kp[k] < 0)
+            throw std::runtime_error(
+                "convert_and_write: missing KP" + std::to_string(k+1) + " column");
+
+    const double NaN = std::numeric_limits<double>::quiet_NaN();
+    auto parse_double = [&](const std::string& s) -> double {
+        try { return std::stod(s); } catch (...) { return NaN; }
+    };
+
+    std::vector<CelRow> rows;
+    while (std::getline(ss, line)) {
+        auto sv = trim(line);
+        if (sv.empty() || !std::isdigit(static_cast<unsigned char>(sv[0])))
+            continue;
+
+        auto fields = split_csv(std::string(sv));
+        if (static_cast<int>(fields.size()) <= ci_f107) continue;
+
+        CelRow r;
+        // Parse DATE: "YYYY-MM-DD"
+        std::string date(trim(fields[ci_date]));
+        if (std::sscanf(date.c_str(), "%d-%d-%d", &r.year, &r.month, &r.day) != 3)
+            continue;
+
+        r.f107 = parse_double(std::string(trim(fields[ci_f107])));
+        for (int k = 0; k < 8; ++k) {
+            if (ci_kp[k] < static_cast<int>(fields.size()))
+                r.kp[k] = parse_double(std::string(trim(fields[ci_kp[k]])));
+            else
+                r.kp[k] = NaN;
+        }
+        rows.push_back(r);
+    }
+    return rows;
+}
+
+} // anonymous namespace
+
+// ─── Main conversion ─────────────────────────────────────────────────────────
+
+void DriverCacheManager::convert_and_write(const std::string& raw_csv,
+                                           const fs::path& dest) {
+    const double NaN = std::numeric_limits<double>::quiet_NaN();
+
+    // 1. Parse raw CelesTrak CSV.
+    auto rows = parse_celestrak(raw_csv);
+    if (rows.empty())
+        throw std::runtime_error(
+            "DriverCacheManager::convert_and_write: no data rows parsed");
+
+    // 2. Build daily F10.7 series (hours-since-epoch as x).
+    //    Reference epoch: midnight of first day with valid F10.7.
+    std::vector<double> xf, yf;
+    xf.reserve(rows.size());
+    yf.reserve(rows.size());
+    for (const auto& r : rows) {
+        if (!std::isfinite(r.f107)) continue;
+        std::string ds = std::to_string(r.year)  + "-" +
+                         (r.month < 10 ? "0" : "") + std::to_string(r.month) + "-" +
+                         (r.day   < 10 ? "0" : "") + std::to_string(r.day) +
+                         " 00:00:00";
+        TimePoint tp = rope::parse_datetime(ds);
+        xf.push_back(static_cast<double>(tp) / 3600.0);
+        yf.push_back(r.f107);
+    }
+    if (xf.size() < 2)
+        throw std::runtime_error(
+            "convert_and_write: too few valid F10.7 rows");
+
+    // PCHIP slopes for F10.7.
+    auto df107 = pchip_slopes(xf, yf);
+
+    // 3. PCHIP Kp per day: 3-hourly → hourly (in raw tenths; divide later).
+    //    Build map: day_midnight_seconds → hourly kp[0..23].
+    std::unordered_map<TimePoint, std::array<double, 24>> kp_daily;
+    kp_daily.reserve(rows.size());
+
+    for (std::size_t ri = 0; ri + 1 < rows.size(); ++ri) {
+        const CelRow& r = rows[ri];
+        // Check all KP values are finite.
+        bool ok = true;
+        for (int k = 0; k < 8; ++k)
+            if (!std::isfinite(r.kp[k])) { ok = false; break; }
+        if (!ok) continue;
+
+        // Next day's KP1 as the 24h endpoint (ensures continuity).
+        const CelRow& next = rows[ri + 1];
+        if (!std::isfinite(next.kp[0])) continue;
+
+        // Build knots: hours 0,3,6,9,12,15,18,21,24 with values kp[0..7], next.kp[0]
+        std::vector<double> xk = {0,3,6,9,12,15,18,21,24};
+        std::vector<double> yk(9);
+        for (int k = 0; k < 8; ++k) yk[k] = r.kp[k];
+        yk[8] = next.kp[0];
+
+        auto dk = pchip_slopes(xk, yk);
+
+        std::string ds = std::to_string(r.year)  + "-" +
+                         (r.month < 10 ? "0" : "") + std::to_string(r.month) + "-" +
+                         (r.day   < 10 ? "0" : "") + std::to_string(r.day) +
+                         " 00:00:00";
+        TimePoint day_tp = rope::parse_datetime(ds);
+
+        std::array<double, 24> hourly{};
+        for (int h = 0; h < 24; ++h)
+            hourly[h] = pchip_eval(xk, yk, dk, static_cast<double>(h));
+        kp_daily[day_tp] = hourly;
+    }
+
+    // 4. Generate hourly output: inner join of F10.7 and Kp.
+    //    Walk hour-by-hour over the F10.7 range; look up Kp from the daily map.
+    const double x_min = xf.front();
+    const double x_max = xf.back();
+
+    std::vector<TimePoint>  times;
+    std::vector<float>      f10v, kpv, doyv;
+    std::vector<int>        hourv;
+
+    for (double xh = std::ceil(x_min); xh <= x_max; xh += 1.0) {
+        TimePoint tp = static_cast<TimePoint>(std::llround(xh * 3600.0));
+        TimePoint day_tp = (tp / 86400) * 86400;
+        int h = static_cast<int>((tp % 86400) / 3600);
+
+        auto it = kp_daily.find(day_tp);
+        if (it == kp_daily.end()) continue;
+
+        double f107_val = pchip_eval(xf, yf, df107, xh);
+        if (!std::isfinite(f107_val)) continue;
+
+        double kp_val = it->second[h] / 10.0;  // divide raw tenths by 10
+        if (!std::isfinite(kp_val)) continue;
+
+        int int_doy, yr;
+        rope::unpack(tp, h, int_doy, yr);
+        float cont_doy = static_cast<float>(int_doy) + h / 24.0f;
+
+        times.push_back(tp);
+        f10v.push_back(static_cast<float>(f107_val));
+        kpv.push_back(static_cast<float>(kp_val));
+        doyv.push_back(cont_doy);
+        hourv.push_back(h);
+    }
+
+    if (times.empty())
+        throw std::runtime_error(
+            "convert_and_write: no output rows after merging F10.7 and Kp");
+
+    // 5. Write .swbin directly (magic RPSW, matches driver_bin.h format).
+    //    Header (16 bytes): magic uint32, version uint32, nrows uint32, reserved uint32
+    //    Records (24 bytes): tp int64, f10 float32, kp float32, doy float32, hour_int int32
+    std::error_code ec;
+    fs::create_directories(dest.parent_path(), ec);
+
+    std::ofstream f(dest, std::ios::binary | std::ios::trunc);
+    if (!f) throw std::runtime_error(
+        "convert_and_write: cannot write " + dest.string());
+
+    const std::uint32_t magic   = 0x52505357u;
+    const std::uint32_t version = 1u;
+    const std::uint32_t nrows   = static_cast<std::uint32_t>(times.size());
+    const std::uint32_t zero    = 0u;
+    f.write(reinterpret_cast<const char*>(&magic),   4);
+    f.write(reinterpret_cast<const char*>(&version), 4);
+    f.write(reinterpret_cast<const char*>(&nrows),   4);
+    f.write(reinterpret_cast<const char*>(&zero),    4);
+
+    for (std::uint32_t i = 0; i < nrows; ++i) {
+        auto         tp_raw  = static_cast<std::int64_t>(times[i]);
+        std::int32_t hour_i  = static_cast<std::int32_t>(hourv[i]);
+        f.write(reinterpret_cast<const char*>(&tp_raw),  8);
+        f.write(reinterpret_cast<const char*>(&f10v[i]), 4);
+        f.write(reinterpret_cast<const char*>(&kpv[i]),  4);
+        f.write(reinterpret_cast<const char*>(&doyv[i]), 4);
+        f.write(reinterpret_cast<const char*>(&hour_i),  4);
+    }
+    if (!f) throw std::runtime_error(
+        "convert_and_write: write failed for " + dest.string());
+}
+
+} // namespace rope::io

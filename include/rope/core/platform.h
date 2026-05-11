@@ -52,6 +52,13 @@ public:
 std::filesystem::path default_socket_path();
 
 // ---------------------------------------------------------------------------
+// Default directory for cached driver files written by DriverCacheManager.
+//   Linux/macOS: $XDG_CACHE_HOME/rope/drivers or ~/.cache/rope/drivers
+//   Windows:     %LOCALAPPDATA%\rope\drivers
+// ---------------------------------------------------------------------------
+std::filesystem::path default_cache_dir();
+
+// ---------------------------------------------------------------------------
 // Spawn `exe --serve --socket-path <socket_path> --config-path <config_path>`
 // as a detached background process.  Returns before the process is ready.
 // ---------------------------------------------------------------------------

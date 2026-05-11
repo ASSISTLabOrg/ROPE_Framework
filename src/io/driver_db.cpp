@@ -1,4 +1,5 @@
 #include "rope/io/driver_db.h"
+#include "rope/io/driver_bin.h"
 
 #include <algorithm>
 #include <cmath>
@@ -6,6 +7,33 @@
 
 namespace rope::io {
 
+// ---------------------------------------------------------------------------
+// from_file() — dispatch on extension
+// ---------------------------------------------------------------------------
+SpaceWeatherDB SpaceWeatherDB::from_file(const std::filesystem::path& path) {
+    if (path.extension() == ".swbin")
+        return SpaceWeatherBin::load(path);
+    return SpaceWeatherDB{path};
+}
+
+// ---------------------------------------------------------------------------
+// Private constructor (used by SpaceWeatherBin::load)
+// ---------------------------------------------------------------------------
+SpaceWeatherDB::SpaceWeatherDB(std::vector<TimePoint> times,
+                               std::vector<float>     f10,
+                               std::vector<float>     kp,
+                               std::vector<float>     doy,
+                               std::vector<int>       hour)
+    : times_(std::move(times))
+    , f10_(std::move(f10))
+    , kp_(std::move(kp))
+    , doy_(std::move(doy))
+    , hour_(std::move(hour))
+{}
+
+// ---------------------------------------------------------------------------
+// CSV constructor
+// ---------------------------------------------------------------------------
 SpaceWeatherDB::SpaceWeatherDB(const std::filesystem::path& csv_path) {
     CsvReader csv(csv_path);
     const std::size_t N = csv.nrows();

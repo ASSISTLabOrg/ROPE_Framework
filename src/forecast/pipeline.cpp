@@ -16,8 +16,14 @@
 
 // io/ and core/ public headers
 #include "rope/io/driver_db.h"
+#include "rope/io/driver_bin.h"
+#include "rope/io/driver_cache.h"
+#include "rope/io/driver_config.h"
 #include "rope/io/ic_table.h"
+#include "rope/io/ic_bin.h"
+#include "rope/io/ic_config.h"
 #include "rope/io/stats.h"
+#include "rope/core/platform.h"
 
 #include <algorithm>
 #include <cmath>
@@ -86,21 +92,72 @@ public:
         ts_norm_    = std::make_unique<io::FeatureNormalizer>(stats_ts,  K);
         cae_denorm_ = std::make_unique<io::CAEDenormalizer>(stats_cae);
 
-        // Infer driver columns from total_dim.
+        // --- Driver config: column list ---
         const int D  = ts_norm_->total_dim();
         const int dd = ts_norm_->driver_dim();
-        if      (dd == 6) driver_cols_ = DriverCols::Six;
-        else if (dd == 7) driver_cols_ = DriverCols::Seven;
-        else throw std::runtime_error(
-            "Pipeline: unsupported driver_dim=" + std::to_string(dd) +
-            "; expected 6 or 7.");
 
-        // --- Data tables ---
-        std::cout << "Loading space-weather database…\n";
-        sw_db_    = std::make_unique<io::SpaceWeatherDB>(cfg.driver_csv);
+        auto dc_opt = io::DriverConfig::try_load(dir);
+        if (dc_opt) {
+            if (static_cast<int>(dc_opt->columns.size()) != dd)
+                throw std::runtime_error(
+                    "Pipeline: driver_config.json has " +
+                    std::to_string(dc_opt->columns.size()) +
+                    " columns but stats_ts.bin expects driver_dim=" +
+                    std::to_string(dd));
+            driver_cols_ = dc_opt->columns;
+            source_name_ = dc_opt->source;
+        } else {
+            // Backward-compat: infer from stats_ts.bin dimension.
+            if      (dd == 6) driver_cols_ = {"f10","kp","t1","t2","t3","t4"};
+            else if (dd == 7) driver_cols_ = {"f10","kp","t1","t2","t3","t4","doy"};
+            else throw std::runtime_error(
+                "Pipeline: no driver_config.json and unsupported driver_dim=" +
+                std::to_string(dd) + "; expected 6 or 7.");
+        }
 
+        // --- IC config + IC table ---
         std::cout << "Loading IC table…\n";
-        ic_table_ = std::make_unique<io::ICTable>(cfg.ic_csv);
+        {
+            // Try exported_dir/ic_table.icbin, then ic_table.csv.
+            auto bin_path = dir / "ic_table.icbin";
+            auto csv_path = dir / "ic_table.csv";
+            if (std::filesystem::exists(bin_path))
+                ic_table_ = std::make_unique<io::ICTable>(
+                    io::IcBin::load(bin_path));
+            else if (std::filesystem::exists(csv_path))
+                ic_table_ = std::make_unique<io::ICTable>(csv_path);
+            else
+                throw std::runtime_error(
+                    "Pipeline: no IC table found in " + dir.string() +
+                    " (expected ic_table.icbin or ic_table.csv)");
+
+            auto ic_opt = io::IcConfig::try_load(dir);
+            if (ic_opt && ic_opt->latent_dim != ic_table_->latent_dim())
+                throw std::runtime_error(
+                    "Pipeline: ic_config.json latent_dim=" +
+                    std::to_string(ic_opt->latent_dim) +
+                    " does not match IC table K=" +
+                    std::to_string(ic_table_->latent_dim()));
+        }
+
+        // --- Space-weather data ---
+        std::cout << "Loading space-weather database…\n";
+        {
+            fs::path effective_path = cfg.driver_path;
+            if (effective_path.empty()) {
+                if (source_name_.empty())
+                    throw std::runtime_error(
+                        "Pipeline: no driver_path set and driver_config.json "
+                        "has no 'source'; cannot locate driver data.");
+                fs::path cache_dir = cfg.cache_dir.empty()
+                    ? platform::default_cache_dir()
+                    : cfg.cache_dir;
+                io::DriverCacheManager mgr{cache_dir, cfg.cache_max_age_hours};
+                effective_path = mgr.get_path(source_name_);
+            }
+            sw_db_ = std::make_unique<io::SpaceWeatherDB>(
+                io::SpaceWeatherDB::from_file(effective_path));
+        }
 
         // --- Sequence builder ---
         seq_builder_ = std::make_unique<SequenceBuilder>(
@@ -168,6 +225,7 @@ public:
 
         std::cout << "Pipeline loaded.  total_dim=" << D
                   << "  driver_dim=" << dd
+                  << "  source=" << (source_name_.empty() ? "(explicit path)" : source_name_)
                   << "  meta_threads=" << meta_threads
                   << "  uncertainty=" << (compute_uncertainty_ ? "on" : "off") << "\n";
     }
@@ -176,26 +234,28 @@ public:
         const int H = horizon;
         const int D = ts_norm_->total_dim();
 
-        // 1. Build driver window: (S-1 history) + H forecast rows.
+        // 1. Build driver window: (S-1 history) + (H+1) forecast rows.
+        //    One extra forecast row lets the rollout slide into hour H.
         std::vector<io::DriverRow> all_rows =
-            io::DriverWindowBuilder::build(*sw_db_, start_iso, H, S);
+            io::DriverWindowBuilder::build(*sw_db_, start_iso, H + 1, S);
 
         std::vector<io::DriverRow> hist_rows(
             all_rows.begin(), all_rows.begin() + S);
         std::vector<io::DriverRow> fcast_rows(
             all_rows.begin() + S - 1,
-            all_rows.begin() + S - 1 + H);
+            all_rows.begin() + S - 1 + H + 1);  // H+1 rows: hours 0..H
 
         // 2. Build initial normalized sequence: (S, D).
         std::vector<float> X_init = seq_builder_->build_X_init_norm(hist_rows);
 
-        // 3. Build x_chunk: (H, S, D).
+        // 3. Build x_chunk: (H+1, S, D) — extra window supplies drivers for
+        //    the rollout slide at t=H-1 → prediction at hour H.
         std::vector<float> x_chunk =
-            seq_builder_->build_x_chunk(X_init, fcast_rows, H);
+            seq_builder_->build_x_chunk(X_init, fcast_rows, H + 1);
 
         // 4. Run 15 base models (in parallel when OpenMP is available).
-        //    base_latents_norm: (M, H-1, K) flat
-        const int T = H - 1;
+        //    base_latents_norm: (M, H, K) flat — H predictions per model.
+        const int T = H;
         std::vector<float> base_latents_norm(
             static_cast<size_t>(M) * T * K, 0.0f);
 
@@ -227,7 +287,9 @@ public:
         std::vector<float> meta_mean_norm(meta_out.begin(),
                                           meta_out.begin() + T * K);
 
-        // 6. Denorm meta mean (H-1, K) and build mu_lat (H, K).
+        // 6. Denorm meta mean (H, K) and build mu_lat (H+1, K).
+        //    mu_lat[0]   = IC (initial condition from history)
+        //    mu_lat[1..H] = H predictions for hours 1..H
         ts_norm_->denorm_latents_block(meta_mean_norm.data(), T);
 
         std::vector<float> init_lat(K);
@@ -236,17 +298,20 @@ public:
                   init_lat.begin());
         ts_norm_->denorm_latents_inplace(init_lat.data());
 
-        std::vector<float> mu_lat(static_cast<size_t>(H) * K);
+        const int H_lat = H + 1;  // IC + H predictions
+        std::vector<float> mu_lat(static_cast<size_t>(H_lat) * K);
         std::copy(init_lat.begin(), init_lat.end(), mu_lat.begin());
         std::copy(meta_mean_norm.begin(), meta_mean_norm.end(), mu_lat.begin() + K);
 
+        // Output covers hours 1..H (H snapshots); IC at hour 0 is internal only.
         const size_t total_voxels = static_cast<size_t>(H) * GRID_VOXELS;
         std::vector<float> density_mean;
         std::vector<float> uncertainty;
 
         if (!compute_uncertainty_) {
-            // 7. Fast path: decode mu_lat once, zero uncertainty.
-            density_mean = decoder_->decode(mu_lat, H, K);
+            // 7. Fast path: decode all H+1 latents; drop IC snapshot.
+            auto all_density = decoder_->decode(mu_lat, H_lat, K);
+            density_mean.assign(all_density.begin() + GRID_VOXELS, all_density.end());
             uncertainty.assign(total_voxels, 0.0f);
         } else {
             // 7. Full path: Unscented Transform.
@@ -263,16 +328,16 @@ public:
             Wm[0] = 0.0f;
             Wc[0] = 2.0f;  // 1 - α² + β = 1 - 1 + 2
 
-            // Build sigma points sigma_lat (H, N_SIG, K).
+            // Build sigma points sigma_lat (H+1, N_SIG, K) — one set per latent.
             const size_t sig_stride = static_cast<size_t>(N_SIG) * K;
-            std::vector<float> sigma_lat(static_cast<size_t>(H) * sig_stride, 0.0f);
+            std::vector<float> sigma_lat(static_cast<size_t>(H_lat) * sig_stride, 0.0f);
 
             std::vector<float> Pt(K * K);
             std::vector<float> cPt(K * K);
             constexpr float EPS_JIT  = 1e-6f;
             constexpr float EPS_JIT2 = 1e-3f;
 
-            for (int t = 0; t < H; ++t) {
+            for (int t = 0; t < H_lat; ++t) {
                 const float* mu_t  = mu_lat.data() + t * K;
                 float*       sig_t = sigma_lat.data() + t * static_cast<ptrdiff_t>(sig_stride);
 
@@ -318,14 +383,16 @@ public:
                 }
             }
 
-            // Batch-decode all H*N_SIG sigma points.
+            // Batch-decode all (H+1)*N_SIG sigma points.
             std::vector<float> dens_sigmas =
-                decoder_->decode(sigma_lat, H * N_SIG, K);
+                decoder_->decode(sigma_lat, H_lat * N_SIG, K);
 
             // UT mean then variance → density and uncertainty.
-            density_mean.assign(total_voxels, 0.0f);
+            // Accumulate over H+1 latents; drop IC (t=0) at output.
+            const size_t lat_voxels = static_cast<size_t>(H_lat) * GRID_VOXELS;
+            density_mean.assign(lat_voxels, 0.0f);
 
-            for (int t = 0; t < H; ++t)
+            for (int t = 0; t < H_lat; ++t)
                 for (int s = 0; s < N_SIG; ++s) {
                     const float* src = dens_sigmas.data() +
                                        (static_cast<size_t>(t) * N_SIG + s) * GRID_VOXELS;
@@ -335,9 +402,9 @@ public:
                         dst[v] += w * src[v];
                 }
 
-            uncertainty.assign(total_voxels, 0.0f);
+            uncertainty.assign(lat_voxels, 0.0f);
 
-            for (int t = 0; t < H; ++t)
+            for (int t = 0; t < H_lat; ++t)
                 for (int s = 0; s < N_SIG; ++s) {
                     const float* src = dens_sigmas.data() +
                                        (static_cast<size_t>(t) * N_SIG + s) * GRID_VOXELS;
@@ -352,23 +419,32 @@ public:
 
             for (float& u : uncertainty)
                 u = std::sqrt(std::max(u, 0.0f));
+
+            // Drop IC snapshot at t=0; keep t=1..H.
+            density_mean.erase(density_mean.begin(),
+                                density_mean.begin() + GRID_VOXELS);
+            uncertainty.erase(uncertainty.begin(),
+                               uncertainty.begin() + GRID_VOXELS);
         }
 
         // 11. Build ForecastGrid.
+        // density/uncertainty already trimmed to H snapshots (hours 1..H).
+        // Times run from start+1h through start+H (inclusive).
         ForecastGrid grid;
         grid.H          = H;
         grid.density    = std::move(density_mean);
         grid.uncertainty= std::move(uncertainty);
         grid.times.reserve(H);
-        for (int t = 0; t < H; ++t)
+        for (int t = 1; t <= H; ++t)
             grid.times.push_back(fcast_rows[t].tp);
 
         return grid;
     }
 
 private:
-    bool       compute_uncertainty_{true};
-    DriverCols driver_cols_{DriverCols::Six};
+    bool                     compute_uncertainty_{true};
+    std::vector<std::string> driver_cols_;
+    std::string              source_name_;
 
     // Data
     std::unique_ptr<io::SpaceWeatherDB>     sw_db_;

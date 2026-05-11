@@ -19,6 +19,10 @@
 #include "rope/core/datetime.h"
 #include "rope/core/platform.h"
 #include "rope/io/csv_reader.h"
+#include "rope/io/driver_db.h"
+#include "rope/io/driver_bin.h"
+#include "rope/io/ic_table.h"
+#include "rope/io/ic_bin.h"
 #include "rope/server/server.h"
 
 #include <CLI/CLI.hpp>
@@ -205,6 +209,24 @@ int main(int argc, char** argv) {
     gc->add_option("--file", gc_file, "Batch CSV input (replaces point flags)");
     gc->add_option("--output", gc_output, "Output file for --file results");
 
+    // ---- convert-sw subcommand ----
+    auto* sw = app.add_subcommand("convert-sw",
+                                   "Convert a space-weather CSV to .swbin binary format");
+    std::string sw_input, sw_output;
+    sw->add_option("--input",  sw_input,  "Input CSV file (datetime,f10,kp,...)")
+      ->required();
+    sw->add_option("--output", sw_output, "Output .swbin file")
+      ->required();
+
+    // ---- convert-ic subcommand ----
+    auto* ic = app.add_subcommand("convert-ic",
+                                   "Convert an IC-table CSV to .icbin binary format");
+    std::string ic_input, ic_output;
+    ic->add_option("--input",  ic_input,  "Input CSV file (F10,Kp,y1,...,yK)")
+      ->required();
+    ic->add_option("--output", ic_output, "Output .icbin file")
+      ->required();
+
     // ---- exit subcommand ----
     auto* ec = app.add_subcommand("exit", "Terminate the server cleanly");
 
@@ -292,6 +314,40 @@ int main(int argc, char** argv) {
             client.exit_server();
         } catch (...) {
             // If nothing is running, exit is a no-op success.
+        }
+        return 0;
+    }
+
+    // ---- convert-sw ----
+    if (sw->parsed()) {
+        try {
+            std::cout << "Loading " << sw_input << "…\n";
+            auto db = rope::io::SpaceWeatherDB::from_file(fs::path{sw_input});
+            std::cout << "  " << db.size() << " rows  ["
+                      << rope::format_iso(db.time_min()) << " → "
+                      << rope::format_iso(db.time_max()) << "]\n";
+            std::cout << "Writing " << sw_output << "…\n";
+            rope::io::SpaceWeatherBin::save(db, fs::path{sw_output});
+            std::cout << "Done.\n";
+        } catch (const std::exception& e) {
+            std::cerr << "rope convert-sw: " << e.what() << "\n";
+            return 1;
+        }
+        return 0;
+    }
+
+    // ---- convert-ic ----
+    if (ic->parsed()) {
+        try {
+            std::cout << "Loading " << ic_input << "…\n";
+            auto table = rope::io::ICTable::from_file(fs::path{ic_input});
+            std::cout << "  latent_dim=" << table.latent_dim() << "\n";
+            std::cout << "Writing " << ic_output << "…\n";
+            rope::io::IcBin::save(table, fs::path{ic_output});
+            std::cout << "Done.\n";
+        } catch (const std::exception& e) {
+            std::cerr << "rope convert-ic: " << e.what() << "\n";
+            return 1;
         }
         return 0;
     }

@@ -18,29 +18,37 @@ namespace rope::forecast {
 // Config — all paths and tuning parameters needed to construct a Pipeline.
 // ---------------------------------------------------------------------------
 struct Config {
-    std::filesystem::path exported_dir;   // directory produced by export_models.py
-    std::filesystem::path driver_csv;     // sw_celestrack_1957.csv or equivalent
-    std::filesystem::path ic_csv;         // IC_Table_modified.csv
+    // Directory produced by export_models.py (contains *.onnx, *.bin,
+    // driver_config.json, ic_config.json, ic_table.icbin or ic_table.csv).
+    std::filesystem::path exported_dir;
+
+    // Explicit driver data file (.swbin or .csv, format auto-detected).
+    // When set, bypasses the cache manager entirely — no network access.
+    // Leave empty to let driver_config.json + DriverCacheManager supply data.
+    std::filesystem::path driver_path;
+
+    // Directory for cached .swbin files written by DriverCacheManager.
+    // Defaults to the platform cache root when empty.
+    std::filesystem::path cache_dir;
+
+    // How old a cached driver file may be before refresh is attempted.
+    int cache_max_age_hours = 24;
 
     // ORT intra-op threads for the 15 base models.
-    // 1 is fine; OpenMP parallelises across the 15 models already.
     int intra_threads_base    = 1;
 
-    // ORT intra-op threads for the meta model (batched Transformer, benefits
-    // from multi-threading).  0 = std::thread::hardware_concurrency().
+    // ORT intra-op threads for the meta model.
+    // 0 = std::thread::hardware_concurrency().
     int intra_threads_meta    = 0;
 
-    // ORT intra-op threads for the COAE decoder (conv-heavy).
+    // ORT intra-op threads for the COAE decoder.
     // 0 = std::thread::hardware_concurrency().
-    // Ignored when decoder_device != "cpu".
     int intra_threads_decoder = 0;
 
     // PyTorch device string for the COAE decoder when LibTorch is linked.
-    // "cpu", "cuda", "cuda:0", etc.  Ignored when using the ONNX backend.
     std::string decoder_device = "cpu";
 
-    // When false, skip the Unscented Transform entirely.  The decoder runs
-    // once on the meta-model mean latents; uncertainty is set to 0.
+    // When false, skip the Unscented Transform; uncertainty is set to 0.
     bool compute_uncertainty = true;
 };
 

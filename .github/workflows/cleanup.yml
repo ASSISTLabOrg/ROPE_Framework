@@ -1,0 +1,69 @@
+name: Cleanup
+
+# Purge GitHub Actions caches for branches that no longer exist.
+# Runs every 4 hours and can also be triggered manually.
+
+on:
+  schedule:
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  purge-stale-caches:
+    name: Purge caches for deleted branches
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete stale caches
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo  = context.repo.repo;
+
+            // Fetch all action caches (paginated).
+            const caches = await github.paginate(
+              github.rest.actions.getActionsCacheList,
+              { owner, repo, per_page: 100 }
+            );
+
+            // Fetch all live branches.
+            const branches = await github.paginate(
+              github.rest.repos.listBranches,
+              { owner, repo, per_page: 100 }
+            );
+
+            const liveRefs = new Set(
+              branches.map(b => `refs/heads/${b.name}`)
+            );
+
+            let deleted = 0;
+            let kept    = 0;
+
+            for (const cache of caches) {
+              const ref = cache.ref ?? '';
+
+              // Keep caches for live branches.
+              if (liveRefs.has(ref)) { kept++; continue; }
+
+              // Keep caches for tags (used by the release workflow).
+              if (ref.startsWith('refs/tags/')) { kept++; continue; }
+
+              try {
+                await github.rest.actions.deleteActionsCacheById({
+                  owner, repo, cache_id: cache.id
+                });
+                core.info(
+                  `Deleted: [${cache.id}] ${cache.key} (${ref || 'no ref'})`
+                );
+                deleted++;
+              } catch (err) {
+                core.warning(
+                  `Failed to delete cache ${cache.id}: ${err.message}`
+                );
+              }
+            }
+
+            core.info(`Done — deleted ${deleted} stale, kept ${kept}.`);

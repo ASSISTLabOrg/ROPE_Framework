@@ -307,9 +307,14 @@ void run(const std::filesystem::path& socket_path,
         };
 
         forecast::Config fcfg;
-        fcfg.exported_dir          = resolve(config.get("paths.exported_dir"));
-        fcfg.driver_csv            = resolve(config.get("paths.driver_csv"));
-        fcfg.ic_csv                = resolve(config.get("paths.ic_csv"));
+        fcfg.exported_dir        = resolve(config.get("paths.exported_dir"));
+        // driver_path is optional: when absent, the cache manager takes over.
+        if (config.has("paths.driver_path"))
+            fcfg.driver_path = resolve(config.get("paths.driver_path"));
+        // cache_dir is optional: defaults to platform cache root.
+        if (config.has("driver_cache.cache_dir"))
+            fcfg.cache_dir = resolve(config.get("driver_cache.cache_dir"));
+        fcfg.cache_max_age_hours   = config.get_int("driver_cache.max_age_hours", 24);
         fcfg.intra_threads_base    = config.get_int("threads.intra_threads_base", 1);
         fcfg.intra_threads_meta    = config.get_int("threads.intra_threads_meta", 0);
         fcfg.intra_threads_decoder = config.get_int("threads.intra_threads_decoder", 0);

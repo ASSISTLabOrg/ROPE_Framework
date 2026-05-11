@@ -20,16 +20,16 @@ public:
 
     // Run rollout for a single model.
     //   model     — base temporal model
-    //   x_chunk   — (H, S, D) flat float array (read-only)
+    //   x_chunk   — (H+1, S, D) flat float array (read-only)
     //   H         — forecast horizon
-    //   preds_out — (H-1, K) flat float array (caller allocates)
+    //   preds_out — (H, K) flat float array (caller allocates)
     //
     // Input shape per call: (1, S, D).  Output shape expected: (1, K).
     void run(
         IModel&      model,
-        const float* x_chunk,   // (H, S, D)
+        const float* x_chunk,   // (H+1, S, D)
         int          H,
-        float*       preds_out  // (H-1, K)
+        float*       preds_out  // (H, K)
     ) const {
         const int window_size = S_ * D_;
         std::vector<float> inp(window_size);
@@ -42,7 +42,7 @@ public:
 
         OnnxModel* onnx = dynamic_cast<OnnxModel*>(&model);
 
-        for (int t = 1; t < H; ++t) {
+        for (int t = 1; t <= H; ++t) {
             if (onnx) {
                 onnx->infer_bound(inp.data(), in_shape,
                                   out_buf.data(), out_shape);
@@ -56,7 +56,7 @@ public:
             std::copy(out_buf.begin(), out_buf.end(),
                       preds_out + (t - 1) * K_);
 
-            if (t + 1 < H) {
+            if (t < H) {
                 // Slide the window: inp[0:S-1] = inp[1:S]
                 std::copy(inp.begin() + D_, inp.begin() + S_ * D_, inp.begin());
 
@@ -64,6 +64,7 @@ public:
                 float* last_row = inp.data() + (S_ - 1) * D_;
                 std::copy(out_buf.begin(), out_buf.end(), last_row);
 
+                // x_chunk has H+1 windows; at t=H-1 this reads window H (valid).
                 const float* next_drv = x_chunk
                     + static_cast<size_t>(t + 1) * S_ * D_
                     + static_cast<size_t>(S_ - 1) * D_

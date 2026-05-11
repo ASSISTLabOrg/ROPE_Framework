@@ -198,6 +198,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write    # required to delete staging artifacts
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -219,3 +220,10 @@ jobs:
             **Downloads:** [Google Drive](https://drive.google.com/drive/folders/1gVQ0gqzwfKDaZIuT8tWoCyWQOL_hT4Ol?usp=drive_link)
 
             Place both folders alongside the extracted archive before running the server.
+
+      # Staging artifacts have been published to the release; delete them
+      # immediately rather than waiting out the 1-day retention window.
+      - name: Delete staging artifacts
+        uses: actions/delete-artifact@v4
+        with:
+          pattern: rope-*

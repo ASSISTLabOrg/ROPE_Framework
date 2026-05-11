@@ -30,8 +30,14 @@ struct DriverRow {
 // ---------------------------------------------------------------------------
 // SpaceWeatherDB
 // ---------------------------------------------------------------------------
+class SpaceWeatherBin;  // forward-declare for friend
+
 class SpaceWeatherDB {
 public:
+    // Load from file; format auto-detected from extension.
+    // ".swbin" → binary; anything else → CSV.
+    static SpaceWeatherDB from_file(const std::filesystem::path& path);
+
     explicit SpaceWeatherDB(const std::filesystem::path& csv_path);
 
     // Look up a single TimePoint; throws if not found.
@@ -39,8 +45,18 @@ public:
 
     TimePoint time_min() const { return times_.front(); }
     TimePoint time_max() const { return times_.back(); }
+    std::size_t size()   const { return times_.size(); }
 
 private:
+    friend class SpaceWeatherBin;
+
+    // Private constructor used by SpaceWeatherBin::load().
+    SpaceWeatherDB(std::vector<TimePoint> times,
+                   std::vector<float>     f10,
+                   std::vector<float>     kp,
+                   std::vector<float>     doy,
+                   std::vector<int>       hour);
+
     std::vector<TimePoint> times_;
     std::vector<float>     f10_, kp_, doy_;
     std::vector<int>       hour_;

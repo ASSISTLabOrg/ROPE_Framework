@@ -7,14 +7,29 @@
 [paths]
 # ---------------------------------------------------------------------------
 
-# Directory produced by export_models.py (contains *.onnx + *.bin files).
+# Directory produced by export_models.py (contains *.onnx, *.bin,
+# driver_config.json, ic_config.json, ic_table.icbin).
 exported_dir = ../models/exported
 
-# Space-weather database (sw_celestrack_1957.csv or equivalent).
-driver_csv = ../data/sw_celestrack_1957.csv
+# Explicit driver data file (.swbin or .csv).  When set, bypasses the
+# cache manager entirely — no network access or staleness check.
+# Remove this line (or leave empty) once the online conversion is
+# implemented and the cache manager can supply fresh data automatically.
+driver_path = ../data/sw_celestrack_1957.swbin
 
-# Initial-conditions table.
-ic_csv = ../data/IC_Table_modified.csv
+
+# ---------------------------------------------------------------------------
+[driver_cache]
+# ---------------------------------------------------------------------------
+
+# Directory where DriverCacheManager writes refreshed .swbin files.
+# Defaults to the platform cache root when omitted:
+#   Linux/macOS : $XDG_CACHE_HOME/rope/drivers  (or ~/.cache/rope/drivers)
+#   Windows     : %LOCALAPPDATA%\rope\drivers
+# cache_dir = ~/.cache/rope/drivers
+
+# Maximum age of a cached file before a refresh is attempted (hours).
+max_age_hours = 24
 
 
 # ---------------------------------------------------------------------------
