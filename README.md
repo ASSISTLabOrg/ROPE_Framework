@@ -66,31 +66,6 @@ device = cpu    # or: cuda, cuda:0, cuda:1
 
 This only has an effect on builds that include the LibTorch backend (the CPU and CUDA 12 Linux builds, and the macOS build).
 
-## Python
-
-A Python wrapper is included in the `python/` directory. Copy `rope.py` to your project or add `python/` to your Python path.
-
-```python
-from rope import Rope
-
-r = Rope()
-r.forecast("2024-06-01 00:00:00", horizon=24)
-
-with r:
-    result = r.get(time="2024-06-01T06:00:00", lst=12.5, lat=45.0, alt_km=400.0)
-    print(result)  # {'density': 4.72e-12, 'uncertainty': 3.5e-13}
-
-r.shutdown()
-```
-
-The `with` block opens an interpolation handle against the cached grid and closes it on exit. It does not stop the server. Call `r.shutdown()` when you are done to stop the server process. If you forget, the Python wrapper will call it automatically on interpreter exit, and the server will also stop itself after 30 minutes of inactivity. The idle timeout is configurable via `idle_timeout_seconds` in the `[server]` section of `rope.conf`; set it to `0` to disable.
-
-The wrapper requires Python 3.8 or later and no additional packages.
-
-## C API
-
-For use from C or other languages, `include/rope/capi/rope.h` exposes a stable C-compatible API. The shared library is `lib/librope.so` (Linux), `lib/librope.dylib` (macOS), or `bin/rope.dll` (Windows).
-
 ## Command Line Interface
 
 All commands are run through the `rope` executable in `bin/`. On Linux and macOS you may need to prefix commands with `./bin/rope` if the directory is not on your PATH.
@@ -149,6 +124,271 @@ rope exit
 ```
 rope forecast --config /path/to/rope.conf --start "2024-06-01 00:00:00" --horizon 24
 ```
+
+## Python
+
+A Python wrapper is included in the `python/` directory. Copy `rope.py` to your project or add `python/` to your Python path. Requires Python 3.8 or later and no additional packages.
+
+### Setup
+
+```python
+from rope import Rope
+
+# Paths are resolved automatically from the archive layout.
+# Pass explicit paths if your layout differs.
+r = Rope(
+    lib_path="lib/librope.so",   # or .dylib / .dll
+    exe_path="bin/rope",
+    config_path="config/rope.conf",
+)
+```
+
+The constructor parameters are all optional. When omitted, `rope.py` resolves them relative to the directory one level above its own location (the archive root).
+
+To override the decoder device (e.g. to switch between CPU and GPU) without editing `rope.conf`, pass `device="cuda"`. The wrapper writes a temporary config with that setting and passes it to the server subprocess.
+
+### Example
+
+```python
+from rope import Rope, ROPE_INTERP, ROPE_HOLD
+
+r = Rope()
+
+# 1. Run a forecast (starts the server automatically).
+result = r.forecast("2024-06-01 00:00:00", horizon=24)
+print(result["window_start"], "→", result["window_end"])
+
+# 2. Query a single point.
+#    The 'with' block opens an interpolation handle on entry and closes it on exit.
+with r:
+    pt = r.get(time="2024-06-01T07:00:00Z", lst=12.5, lat=45.0, alt_km=400.0)
+    print(pt)  # {'density': 4.72e-12, 'uncertainty': 3.5e-13}
+
+# 3. Query many points at once.
+with r:
+    pts = r.get_batch(
+        times=["2024-06-01T07:00:00Z", "2024-06-01T08:00:00Z"],
+        lsts=[12.5, 6.0],
+        lats=[45.0, -30.0],
+        alts_km=[400.0, 300.0],
+        mode=ROPE_INTERP,
+    )
+    for p in pts:
+        print(p["density"], p["uncertainty"])
+
+# 4. Tight-loop use: get_density() returns a bare float with no dict allocation.
+with r:
+    for t in my_timestamps:
+        rho = r.get_density(t, lst=0.0, lat=0.0, alt_km=400.0)
+
+# 5. Stop the server when done.
+r.shutdown()
+```
+
+The `with` block calls `open()` on entry and `close()` on exit. It does not stop the server. If you never call `shutdown()`, the wrapper calls it automatically on interpreter exit via `atexit`, and the server will also stop itself after 30 minutes of inactivity (configurable via `idle_timeout_seconds` in `rope.conf`; set to `0` to disable).
+
+### Time formats
+
+`forecast()`, `get()`, and `get_batch()` all accept query times in any of these forms:
+
+- **Unix timestamp** (float): `1717225200.0`
+- **ISO 8601 string**: `"2024-06-01T07:00:00"`, `"2024-06-01T07:00:00Z"`, `"2024-06-01 07:00:00"`
+- **`datetime` object**: timezone-aware or naive (naive is treated as UTC)
+
+### API summary
+
+| Member | Description |
+|--------|-------------|
+| `Rope(lib_path, exe_path, socket_path, config_path, device)` | Constructor — all parameters optional |
+| `forecast(start, horizon)` → `dict` | Run a forecast; returns `{"status", "window_start", "window_end"}` |
+| `open()` | Fetch the cached grid and open an interpolation handle |
+| `close()` | Release the handle without stopping the server |
+| `refresh()` | Re-fetch the grid after a new forecast |
+| `get(time, lst, lat, alt_km, mode)` → `dict` | Single-point query; returns `{"density", "uncertainty"}` in kg/m³ |
+| `get_density(time, lst, lat, alt_km, mode)` → `float` | Single-point density only; faster for tight loops |
+| `get_batch(times, lsts, lats, alts_km, mode)` → `list[dict]` | N-point query; returns list of `{"density", "uncertainty"}` |
+| `shutdown()` | Send exit command to the server |
+| `device` | Property: active decoder device string |
+
+**Mode constants:** `ROPE_INTERP` (1, default) — interpolate in time; `ROPE_HOLD` (0) — snap to next model hour.
+
+Errors are raised as `RopeError(RuntimeError)` with a `.code` attribute matching the `ROPE_ERR_*` values and a message that includes the error name (e.g. `[time out of range] ...`).
+
+## C API
+
+For use from C or languages with a C FFI, `include/rope/capi/rope.h` exposes a stable C-compatible ABI. The shared library is `lib/librope.so` (Linux), `lib/librope.dylib` (macOS), or `bin/rope.dll` (Windows).
+
+The C API handles interpolation only. The server lifecycle (starting a forecast, shutting down) is managed through the `rope` CLI as described above.
+
+### Functions
+
+```c
+/* Open a handle. Returns NULL on failure; err_buf is filled with the reason. */
+rope_interp_t* rope_open(const char* sock_path, char* err_buf, int err_len);
+
+/* Query a single point. Returns ROPE_OK (0) on success. */
+int rope_query(rope_interp_t* interp, int mode,
+               double time_unix, double lst, double lat, double alt_km,
+               double* density, double* uncertainty,
+               char* err_buf, int err_len);
+
+/* Query N points in one call. Fills density[] and uncertainty[]. */
+int rope_query_batch(rope_interp_t* interp, int mode, int n,
+                     const double* times_unix, const double* lst,
+                     const double* lat, const double* alt_km,
+                     double* density, double* uncertainty,
+                     char* err_buf, int err_len);
+
+/* Release the handle. Does not stop the server. Safe to call with NULL. */
+void rope_close(rope_interp_t* interp);
+
+/* Ask the server to shut down. */
+int rope_server_stop(const char* sock_path, char* err_buf, int err_len);
+```
+
+**Mode constants:** `ROPE_HOLD` (0) — snap to nearest model hour; `ROPE_INTERP` (1) — interpolate in time.
+
+**Return codes:**
+
+| Code | Value | Meaning |
+|------|-------|---------|
+| `ROPE_OK` | 0 | Success |
+| `ROPE_ERR_NO_SERVER` | 1 | Could not connect to server socket |
+| `ROPE_ERR_NO_FORECAST` | 2 | Server has no cached forecast |
+| `ROPE_ERR_TIME_RANGE` | 3 | Query time outside forecast window |
+| `ROPE_ERR_SPATIAL_RANGE` | 4 | Query point outside grid bounds |
+| `ROPE_ERR_BAD_ARG` | 5 | Invalid argument (NULL pointer, etc.) |
+| `ROPE_ERR_INTERNAL` | 6 | Unexpected internal failure |
+
+### Example
+
+```c
+#include "rope/capi/rope.h"
+#include <stdio.h>
+#include <time.h>
+
+int main(void) {
+    char err[256];
+
+    /* 1. Start a forecast from the CLI before calling rope_open. */
+
+    /* 2. Open interpolation handle. */
+    rope_interp_t* r = rope_open(NULL, err, sizeof(err));
+    if (!r) { fprintf(stderr, "rope_open: %s\n", err); return 1; }
+
+    /* 3. Query a single point. */
+    double density, uncertainty;
+    double time_unix = 1717225200.0; /* 2024-06-01T07:00:00 UTC */
+    int rc = rope_query(r, ROPE_INTERP, time_unix,
+                        12.5, 45.0, 400.0,
+                        &density, &uncertainty, err, sizeof(err));
+    if (rc != ROPE_OK) { fprintf(stderr, "rope_query: %s\n", err); }
+    else printf("density=%.3e  uncertainty=%.3e kg/m3\n", density, uncertainty);
+
+    /* 4. Release handle. */
+    rope_close(r);
+    return rc;
+}
+```
+
+Compile and link against the shared library:
+
+```
+# Linux
+gcc -Iinclude example.c -Llib -lrope -Wl,-rpath,'$ORIGIN/../lib' -o example
+
+# macOS
+clang -Iinclude example.c -Llib -lrope -rpath @loader_path/../lib -o example
+
+# Windows (MSVC)
+cl /I include example.c /link /LIBPATH:bin rope.lib /out:example.exe
+```
+
+## C# (.NET)
+
+A C# binding is included in the `dotnet/` directory. It targets .NET 8 and works on all supported platforms. Copy `dotnet/Rope.cs` and `dotnet/Rope.csproj` into your project, or reference the project directly.
+
+The binding uses P/Invoke to call `librope` for fast in-process interpolation, and `Process.Start` to invoke the `rope` CLI for forecast and server lifecycle management.
+
+### Setup
+
+Add the project reference to your `.csproj`:
+
+```xml
+<ItemGroup>
+  <ProjectReference Include="path/to/dotnet/Rope.csproj" />
+</ItemGroup>
+```
+
+Or copy `Rope.cs` into your project and ensure `AllowUnsafeBlocks` is set:
+
+```xml
+<PropertyGroup>
+  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+</PropertyGroup>
+```
+
+### Usage
+
+```csharp
+using RopeFramework;
+
+// Paths are resolved automatically from the package layout.
+// Pass explicit paths if your layout differs.
+var r = new Rope(
+    libPath: "lib/librope.so",   // or .dylib / .dll
+    exePath: "bin/rope",
+    configPath: "config/rope.conf"
+);
+
+// Run a forecast (starts the server automatically on first call).
+var forecast = r.Forecast("2024-06-01 00:00:00", horizon: 24);
+Console.WriteLine($"Window: {forecast.WindowStart} → {forecast.WindowEnd}");
+
+// Open an interpolation handle and query.
+r.Open();
+var result = r.Get(
+    time: new DateTime(2024, 6, 1, 7, 0, 0, DateTimeKind.Utc),
+    lst: 12.5, lat: 45.0, altKm: 400.0,
+    mode: Rope.Interp
+);
+Console.WriteLine($"density={result.Density:e3}  uncertainty={result.Uncertainty:e3} kg/m³");
+
+// Batch query.
+var times = new[] {
+    new DateTime(2024, 6, 1, 7, 0, 0, DateTimeKind.Utc),
+    new DateTime(2024, 6, 1, 8, 0, 0, DateTimeKind.Utc),
+};
+var results = r.GetBatch(times,
+    lsts:   [12.5, 6.0],
+    lats:   [45.0, -30.0],
+    altsKm: [400.0, 300.0]);
+
+// Dispose closes the interpolation handle. Call Shutdown() to stop the server.
+r.Dispose();
+r.Shutdown();
+```
+
+### API summary
+
+| Member | Description |
+|--------|-------------|
+| `Rope(libPath, exePath, socketPath, configPath)` | Constructor — all parameters optional; defaults derived from package layout |
+| `Forecast(string start, int horizon)` | Run a forecast; returns `ForecastResult` with `WindowStart` / `WindowEnd` |
+| `Forecast(DateTime start, int horizon)` | DateTime overload |
+| `Open()` | Fetch the cached grid and open an interpolation handle |
+| `Close()` | Release the handle without stopping the server |
+| `Refresh()` | Re-fetch the grid after a new forecast |
+| `Get(double timeUnix, ...)` | Single-point query; returns `QueryResult` with `Density` and `Uncertainty` |
+| `Get(DateTime time, ...)` | DateTime overload |
+| `GetBatch(double[] timesUnix, ...)` | Batch query; returns `QueryResult[]` |
+| `GetBatch(DateTime[] times, ...)` | DateTime overload |
+| `Shutdown()` | Send the exit command to the server |
+| `Dispose()` | Close the handle and unload the library |
+
+`Rope` implements `IDisposable`. Use a `using` block or call `Dispose()` explicitly. `Rope.Interp` (1) and `Rope.Hold` (0) are the mode constants.
+
+Errors are reported as `RopeException` with a `Code` property matching the `ROPE_ERR_*` constants above and a message that includes the error name.
 
 ## Demo
 
