@@ -304,6 +304,22 @@ jobs:
       # Staging artifacts have been published to the release; delete them
       # immediately rather than waiting out the 1-day retention window.
       - name: Delete staging artifacts
-        uses: actions/delete-artifact@v4
+        uses: actions/github-script@v7
         with:
-          pattern: rope-*
+          script: |
+            const { data: { artifacts } } =
+              await github.rest.actions.listWorkflowRunArtifacts({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                run_id: context.runId,
+              });
+            for (const artifact of artifacts) {
+              if (artifact.name.startsWith('rope-')) {
+                await github.rest.actions.deleteArtifact({
+                  owner:       context.repo.owner,
+                  repo:        context.repo.repo,
+                  artifact_id: artifact.id,
+                });
+                core.info(`Deleted: ${artifact.name}`);
+              }
+            }
