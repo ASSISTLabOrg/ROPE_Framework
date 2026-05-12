@@ -174,14 +174,12 @@ def test_batch_get_from_csv(server, tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_idle_timeout_shuts_down_server(tmp_path):
-    # Windows AF_UNIX sockets have a 108-char path limit. pytest's tmp_path
-    # embeds the full test name, making it too long here. Use %TEMP% directly
-    # with a pid-based filename to stay well under the limit.
-    if sys.platform == "win32":
-        import tempfile
-        sock = str(Path(tempfile.gettempdir()) / f"rope_idle_{os.getpid()}.sock")
-    else:
-        sock = str(tmp_path / "rope_idle.sock")
+    # AF_UNIX path limits: 104 chars on macOS, 108 on Linux, 108 on Windows.
+    # pytest embeds the full test name in tmp_path, which can exceed these
+    # limits (e.g. 132 chars on macOS CI). Use tempfile.gettempdir() directly
+    # so the path stays short (~25–70 chars) on all platforms.
+    import tempfile
+    sock = str(Path(tempfile.gettempdir()) / f"rope_idle_{os.getpid()}.sock")
     conf = tmp_path / "rope_idle.conf"
     _write_conf(conf, idle_timeout_seconds=5)
 
