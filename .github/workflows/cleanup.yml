@@ -1,11 +1,11 @@
 name: Cleanup
 
 # Purge GitHub Actions caches for branches that no longer exist.
-# Runs every 4 hours and can also be triggered manually.
+# Runs every 24 hours and can also be triggered manually.
 
 on:
   schedule:
-    - cron: '0 */4 * * *'
+    - cron: '0 */24 * * *'
   workflow_dispatch:
 
 permissions:
