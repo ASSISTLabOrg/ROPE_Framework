@@ -16,80 +16,17 @@ jobs:
   # Runs on every push/PR — this is the primary CI gate.
   build-linux:
     name: Linux (x86_64, cpu)
-    runs-on: ubuntu-22.04
-    container: debian:bookworm
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install build tools
-        run: |
-          apt-get update
-          apt-get install -y ninja-build gcc-12 g++-12 make ca-certificates python3-pip
-          pip3 install --quiet --break-system-packages "cmake>=4.2" pytest
-
-      - name: Install .NET 8 SDK
-        run: |
-          apt-get install -y wget
-          wget -q https://dot.net/v1/dotnet-install.sh
-          bash dotnet-install.sh --channel 8.0 --install-dir /usr/local/dotnet
-          echo "/usr/local/dotnet" >> "$GITHUB_PATH"
-
-      - name: Restore cached deps
-        uses: actions/cache/restore@v4
-        with:
-          path: build/_deps
-          key: deps-linux-x64-cpu-ort1.25.0-torch2.7.0
-
-      - name: Configure
-        run: |
-          cmake -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER=gcc-12 \
-            -DCMAKE_CXX_COMPILER=g++-12 \
-            -DROPE_DOWNLOAD_DEPS=ON \
-            -DROPE_HARDWARE=cpu \
-            -DROPE_USE_LIBTORCH=ON \
-            -DROPE_BUILD_TESTS=ON \
-            -DROPE_PACKAGE_SUFFIX=linux-x86_64-cpu
-
-      - name: Build
-        run: cmake --build build --parallel
-
-      - name: Test (C++)
-        run: ctest --test-dir build --output-on-failure
-
-      - name: Test (Python)
-        run: pytest tests/python/ -v
-        env:
-          ROPE_EXE:         ${{ github.workspace }}/build/rope
-          ROPE_FIXTURE_DIR: ${{ github.workspace }}/tests/fixtures
-
-      - name: Test (C#)
-        run: |
-          dotnet test tests/dotnet/RopeTests.csproj --logger "console;verbosity=normal"
-        env:
-          DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "1"
-          ROPE_LIB:         ${{ github.workspace }}/build/librope.so
-          ROPE_EXE:         ${{ github.workspace }}/build/rope
-          ROPE_FIXTURE_DIR: ${{ github.workspace }}/tests/fixtures
-
-      - name: Package
-        run: cpack --config build/CPackConfig.cmake
-
-      # Save cache only on main — feature branches restore but never write,
-      # so total cache entries stay capped at one per variant.
-      - name: Save deps cache
-        if: always() && github.ref == 'refs/heads/main'
-        uses: actions/cache/save@v4
-        with:
-          path: build/_deps
-          key: deps-linux-x64-cpu-ort1.25.0-torch2.7.0
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: rope-linux-x86_64-cpu
-          path: rope_framework-*-linux-*.tar.gz
-          retention-days: 1
+    uses: ./.github/workflows/_build-linux.yml
+    with:
+      hardware: cpu
+      use_libtorch: true
+      build_tests: true
+      run_dotnet_tests: true
+      dotnet_pack_smoke: true
+      save_cache: ${{ github.ref == 'refs/heads/main' }}
+      package_suffix: linux-x86_64-cpu
+      artifact_name: rope-linux-x86_64-cpu
+      cache_key: deps-linux-x64-cpu-ort1.25.0-torch2.7.0
 
   # ── Linux CUDA 12 ─────────────────────────────────────────────────────────
   # Compilation-only check for the CUDA variant; skipped on feature branches.
@@ -98,61 +35,16 @@ jobs:
     if: >-
       github.ref == 'refs/heads/main' ||
       github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-22.04
-    container: debian:bookworm
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install build tools
-        run: |
-          apt-get update
-          apt-get install -y ninja-build gcc-12 g++-12 make ca-certificates python3-pip
-          pip3 install --quiet --break-system-packages "cmake>=4.2" pytest
-
-      - name: Restore cached deps
-        uses: actions/cache/restore@v4
-        with:
-          path: build/_deps
-          key: deps-linux-x64-cuda12-ort1.25.0
-
-      - name: Configure
-        run: |
-          cmake -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER=gcc-12 \
-            -DCMAKE_CXX_COMPILER=g++-12 \
-            -DROPE_DOWNLOAD_DEPS=ON \
-            -DROPE_HARDWARE=cuda12 \
-            -DROPE_USE_LIBTORCH=OFF \
-            ${{ inputs.test_all_platforms == true && '-DROPE_BUILD_TESTS=ON' || '' }} \
-            -DROPE_PACKAGE_SUFFIX=linux-x86_64-cuda12
-
-      - name: Build
-        run: cmake --build build --parallel
-
-      - name: Test (C++)
-        if: ${{ inputs.test_all_platforms == true }}
-        run: ctest --test-dir build --output-on-failure
-
-      - name: Test (Python)
-        if: ${{ inputs.test_all_platforms == true }}
-        run: pytest tests/python/ -v
-
-      - name: Package
-        run: cpack --config build/CPackConfig.cmake
-
-      - name: Save deps cache
-        if: always() && github.ref == 'refs/heads/main'
-        uses: actions/cache/save@v4
-        with:
-          path: build/_deps
-          key: deps-linux-x64-cuda12-ort1.25.0
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: rope-linux-x86_64-cuda12
-          path: rope_framework-*-linux-*.tar.gz
-          retention-days: 1
+    uses: ./.github/workflows/_build-linux.yml
+    with:
+      hardware: cuda12
+      use_libtorch: false
+      build_tests: ${{ inputs.test_all_platforms == true }}
+      run_dotnet_tests: false
+      save_cache: ${{ github.ref == 'refs/heads/main' }}
+      package_suffix: linux-x86_64-cuda12
+      artifact_name: rope-linux-x86_64-cuda12
+      cache_key: deps-linux-x64-cuda12-ort1.25.0
 
   # ── macOS arm64 ───────────────────────────────────────────────────────────
   # Skipped on feature branches to avoid accumulating macOS cache copies.
@@ -161,59 +53,16 @@ jobs:
     if: >-
       github.ref == 'refs/heads/main' ||
       github.event_name == 'workflow_dispatch'
-    runs-on: macos-14
-    env:
-      MACOSX_DEPLOYMENT_TARGET: "12.0"
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install CMake 4.x and libomp
-        run: |
-          pip3 install --quiet --break-system-packages "cmake>=4.2" pytest
-          brew install libomp
-
-      - name: Restore cached deps
-        uses: actions/cache/restore@v4
-        with:
-          path: build/_deps
-          key: deps-macos-arm64-cpu-ort1.25.0-torch2.7.0
-
-      - name: Configure
-        run: |
-          cmake -B build \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DROPE_DOWNLOAD_DEPS=ON \
-            -DROPE_HARDWARE=cpu \
-            -DROPE_USE_LIBTORCH=ON \
-            ${{ inputs.test_all_platforms == true && '-DROPE_BUILD_TESTS=ON' || '' }} \
-            -DROPE_PACKAGE_SUFFIX=macos-arm64-cpu
-
-      - name: Build
-        run: cmake --build build --parallel
-
-      - name: Test (C++)
-        if: ${{ inputs.test_all_platforms == true }}
-        run: ctest --test-dir build --output-on-failure
-
-      - name: Test (Python)
-        if: ${{ inputs.test_all_platforms == true }}
-        run: pytest tests/python/ -v
-
-      - name: Package
-        run: cpack --config build/CPackConfig.cmake
-
-      - name: Save deps cache
-        if: always() && github.ref == 'refs/heads/main'
-        uses: actions/cache/save@v4
-        with:
-          path: build/_deps
-          key: deps-macos-arm64-cpu-ort1.25.0-torch2.7.0
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: rope-macos-arm64-cpu
-          path: rope_framework-*-macos-*.tar.gz
-          retention-days: 1
+    uses: ./.github/workflows/_build-macos.yml
+    with:
+      hardware: cpu
+      use_libtorch: true
+      build_tests: ${{ inputs.test_all_platforms == true }}
+      run_dotnet_tests: false
+      save_cache: ${{ github.ref == 'refs/heads/main' }}
+      package_suffix: macos-arm64-cpu
+      artifact_name: rope-macos-arm64-cpu
+      cache_key: deps-macos-arm64-cpu-ort1.25.0-torch2.7.0
 
   # ── Windows CUDA 12 ───────────────────────────────────────────────────────
   # Skipped on feature branches.
@@ -222,64 +71,16 @@ jobs:
     if: >-
       github.ref == 'refs/heads/main' ||
       github.event_name == 'workflow_dispatch'
-    runs-on: windows-2022
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install CMake 4.x
-        run: pip install --quiet --break-system-packages "cmake>=4.2" pytest
-
-      - name: Restore cached deps
-        uses: actions/cache/restore@v4
-        with:
-          path: build/_deps
-          key: deps-windows-x64-cuda12-ort1.25.0
-
-      - name: Configure
-        run: |
-          $pyexe = (python -c "import sys; print(sys.executable)").Trim()
-          cmake -B build `
-            -G "Visual Studio 17 2022" -A x64 `
-            "-DPython3_EXECUTABLE=$pyexe" `
-            -DROPE_DOWNLOAD_DEPS=ON `
-            -DROPE_HARDWARE=cuda12 `
-            -DROPE_USE_LIBTORCH=OFF `
-            ${{ inputs.test_all_platforms == true && '-DROPE_BUILD_TESTS=ON' || '' }} `
-            -DROPE_PACKAGE_SUFFIX=windows-x64-cuda12
-
-      - name: Build
-        run: cmake --build build --config Release --parallel
-
-      - name: Test (C++)
-        if: ${{ inputs.test_all_platforms == true }}
-        run: |
-          $env:Path = "${{ github.workspace }}\build\_deps\onnxruntime-src\lib;$env:Path"
-          ctest --test-dir build -C Release --output-on-failure
-
-      - name: Test (Python)
-        if: ${{ inputs.test_all_platforms == true }}
-        run: |
-          $env:Path = "${{ github.workspace }}\build\_deps\onnxruntime-src\lib;$env:Path"
-          pytest tests/python/ -v
-        env:
-          ROPE_EXE:         ${{ github.workspace }}\build\Release\rope.exe
-          ROPE_FIXTURE_DIR: ${{ github.workspace }}\tests\fixtures
-
-      - name: Package
-        run: cpack --config build/CPackConfig.cmake -C Release
-
-      - name: Save deps cache
-        if: always() && github.ref == 'refs/heads/main'
-        uses: actions/cache/save@v4
-        with:
-          path: build/_deps
-          key: deps-windows-x64-cuda12-ort1.25.0
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: rope-windows-x64-cuda12
-          path: rope_framework-*-windows-*.zip
-          retention-days: 1
+    uses: ./.github/workflows/_build-windows.yml
+    with:
+      hardware: cuda12
+      use_libtorch: false
+      build_tests: ${{ inputs.test_all_platforms == true }}
+      run_dotnet_tests: false
+      save_cache: ${{ github.ref == 'refs/heads/main' }}
+      package_suffix: windows-x64-cuda12
+      artifact_name: rope-windows-x64-cuda12
+      cache_key: deps-windows-x64-cuda12-ort1.25.0
 
   # ── Windows CPU ───────────────────────────────────────────────────────────
   # Skipped on feature branches.
@@ -288,61 +89,13 @@ jobs:
     if: >-
       github.ref == 'refs/heads/main' ||
       github.event_name == 'workflow_dispatch'
-    runs-on: windows-2022
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install CMake 4.x
-        run: pip install --quiet --break-system-packages "cmake>=4.2" pytest
-
-      - name: Restore cached deps
-        uses: actions/cache/restore@v4
-        with:
-          path: build/_deps
-          key: deps-windows-x64-cpu-ort1.25.0-torch2.7.0
-
-      - name: Configure
-        run: |
-          $pyexe = (python -c "import sys; print(sys.executable)").Trim()
-          cmake -B build `
-            -G "Visual Studio 17 2022" -A x64 `
-            "-DPython3_EXECUTABLE=$pyexe" `
-            -DROPE_DOWNLOAD_DEPS=ON `
-            -DROPE_HARDWARE=cpu `
-            -DROPE_USE_LIBTORCH=ON `
-            ${{ inputs.test_all_platforms == true && '-DROPE_BUILD_TESTS=ON' || '' }} `
-            -DROPE_PACKAGE_SUFFIX=windows-x64-cpu
-
-      - name: Build
-        run: cmake --build build --config Release --parallel
-
-      - name: Test (C++)
-        if: ${{ inputs.test_all_platforms == true }}
-        run: |
-          $env:Path = "${{ github.workspace }}\build\_deps\onnxruntime-src\lib;$env:Path"
-          ctest --test-dir build -C Release --output-on-failure
-
-      - name: Test (Python)
-        if: ${{ inputs.test_all_platforms == true }}
-        run: |
-          $env:Path = "${{ github.workspace }}\build\_deps\onnxruntime-src\lib;$env:Path"
-          pytest tests/python/ -v
-        env:
-          ROPE_EXE:         ${{ github.workspace }}\build\Release\rope.exe
-          ROPE_FIXTURE_DIR: ${{ github.workspace }}\tests\fixtures
-
-      - name: Package
-        run: cpack --config build/CPackConfig.cmake -C Release
-
-      - name: Save deps cache
-        if: always() && github.ref == 'refs/heads/main'
-        uses: actions/cache/save@v4
-        with:
-          path: build/_deps
-          key: deps-windows-x64-cpu-ort1.25.0-torch2.7.0
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: rope-windows-x64-cpu
-          path: rope_framework-*-windows-*.zip
-          retention-days: 1
+    uses: ./.github/workflows/_build-windows.yml
+    with:
+      hardware: cpu
+      use_libtorch: true
+      build_tests: ${{ inputs.test_all_platforms == true }}
+      run_dotnet_tests: false
+      save_cache: ${{ github.ref == 'refs/heads/main' }}
+      package_suffix: windows-x64-cpu
+      artifact_name: rope-windows-x64-cpu
+      cache_key: deps-windows-x64-cpu-ort1.25.0-torch2.7.0

@@ -1,0 +1,121 @@
+name: _build-windows
+
+on:
+  workflow_call:
+    inputs:
+      hardware:
+        description: "ROPE_HARDWARE value (cpu, cuda12)"
+        required: true
+        type: string
+      use_libtorch:
+        description: "-DROPE_USE_LIBTORCH"
+        required: true
+        type: boolean
+      build_tests:
+        description: "-DROPE_BUILD_TESTS and whether to run ctest/pytest"
+        required: true
+        type: boolean
+      run_dotnet_tests:
+        description: "Set up the .NET 8 SDK and run the C# test suite"
+        required: true
+        type: boolean
+      save_cache:
+        description: "Save the deps cache after a successful build"
+        required: true
+        type: boolean
+      release_version:
+        description: "-DROPE_RELEASE_VERSION (empty for non-release builds)"
+        required: false
+        type: string
+        default: ""
+      package_suffix:
+        description: "-DROPE_PACKAGE_SUFFIX, also used for the artifact path glob"
+        required: true
+        type: string
+      artifact_name:
+        description: "Name of the uploaded artifact"
+        required: true
+        type: string
+      cache_key:
+        description: "actions/cache key for build/_deps"
+        required: true
+        type: string
+
+jobs:
+  build:
+    name: Windows (x64, ${{ inputs.hardware }})
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install CMake 4.x
+        run: pip install --quiet --break-system-packages "cmake>=4.2" pytest
+
+      - name: Setup .NET 8 SDK
+        if: ${{ inputs.run_dotnet_tests }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore cached deps
+        uses: actions/cache/restore@v4
+        with:
+          path: build/_deps
+          key: ${{ inputs.cache_key }}
+
+      - name: Configure
+        run: |
+          $pyexe = (python -c "import sys; print(sys.executable)").Trim()
+          cmake -B build `
+            -G "Visual Studio 17 2022" -A x64 `
+            "-DPython3_EXECUTABLE=$pyexe" `
+            -DROPE_DOWNLOAD_DEPS=ON `
+            -DROPE_HARDWARE=${{ inputs.hardware }} `
+            -DROPE_USE_LIBTORCH=${{ inputs.use_libtorch && 'ON' || 'OFF' }} `
+            ${{ inputs.build_tests && '-DROPE_BUILD_TESTS=ON' || '' }} `
+            -DROPE_PACKAGE_SUFFIX=${{ inputs.package_suffix }} `
+            -DROPE_RELEASE_VERSION=${{ inputs.release_version }}
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Test (C++)
+        if: ${{ inputs.build_tests }}
+        run: |
+          $env:Path = "${{ github.workspace }}\build\_deps\onnxruntime-src\lib;$env:Path"
+          ctest --test-dir build -C Release --output-on-failure
+
+      - name: Test (Python)
+        if: ${{ inputs.build_tests }}
+        run: |
+          $env:Path = "${{ github.workspace }}\build\_deps\onnxruntime-src\lib;$env:Path"
+          pytest tests/python/ -v
+        env:
+          ROPE_EXE:         ${{ github.workspace }}\build\Release\rope.exe
+          ROPE_FIXTURE_DIR: ${{ github.workspace }}\tests\fixtures
+
+      - name: Test (C#)
+        if: ${{ inputs.run_dotnet_tests }}
+        run: dotnet test tests/dotnet/RopeTests.csproj --logger "console;verbosity=normal"
+        env:
+          ROPE_LIB:         ${{ github.workspace }}\build\Release\rope.dll
+          ROPE_EXE:         ${{ github.workspace }}\build\Release\rope.exe
+          ROPE_FIXTURE_DIR: ${{ github.workspace }}\tests\fixtures
+
+      - name: Package
+        run: cpack --config build/CPackConfig.cmake -C Release
+
+      # Save cache only on main — feature branches restore but never write,
+      # so total cache entries stay capped at one per variant.
+      - name: Save deps cache
+        if: always() && inputs.save_cache
+        uses: actions/cache/save@v4
+        with:
+          path: build/_deps
+          key: ${{ inputs.cache_key }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: rope_framework-*-${{ inputs.package_suffix }}.zip
+          retention-days: 1

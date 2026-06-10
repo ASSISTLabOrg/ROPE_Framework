@@ -323,14 +323,15 @@ endif()
 include(GNUInstallDirs)
 
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/README.md"
-              "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
+              "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt"
     DESTINATION .)
 
 install(TARGETS rope_exe
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(TARGETS rope
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})   # .dll on Windows
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}    # .dll on Windows
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})   # .lib import library on Windows
 
 install(FILES include/rope/capi/rope.h
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/rope/capi)
