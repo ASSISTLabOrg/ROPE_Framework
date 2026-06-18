@@ -24,6 +24,9 @@ add_executable(rope_tests
     test_config_reader.cpp
     test_datetime.cpp
     test_version.cpp
+    test_ic_table.cpp
+    test_driver_db.cpp
+    test_driver_cache.cpp
 )
 target_link_libraries(rope_tests
     PRIVATE Catch2::Catch2WithMain

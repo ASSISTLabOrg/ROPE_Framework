@@ -37,7 +37,6 @@ endif()
 # Options
 # ---------------------------------------------------------------------------
 option(ROPE_USE_LIBTORCH  "Build the TorchScript / LibTorch backend" ON)
-option(ROPE_BUILD_LEGACY  "Also build the legacy rope_demo target"   OFF)
 option(ROPE_BUILD_TESTS   "Build and register unit tests (CTest)"    OFF)
 
 # ---------------------------------------------------------------------------
@@ -386,22 +385,22 @@ if(Torch_FOUND)
 endif()
 
 # Model artifacts
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/models/exported")
-    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/models/exported/" DESTINATION models/exported)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/data/models/tiegcm-lstm-v1")
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/data/models/tiegcm-lstm-v1/" DESTINATION data/models/tiegcm-lstm-v1)
 endif()
 
 # Optional override — point -DROPE_MODELS_DIR= at a different exported dir
 set(ROPE_MODELS_DIR "" CACHE PATH
-    "Directory of exported model artifacts to bundle in the package (overrides models/exported)")
+    "Directory of exported model artifacts to bundle in the package (overrides data/models/tiegcm-lstm-v1)")
 if(ROPE_MODELS_DIR AND EXISTS "${ROPE_MODELS_DIR}")
-    install(DIRECTORY "${ROPE_MODELS_DIR}/" DESTINATION models/exported)
+    install(DIRECTORY "${ROPE_MODELS_DIR}/" DESTINATION data/models/tiegcm-lstm-v1)
 endif()
 
 # Space-weather binary (bundled historical data; used as driver_path override
 # while the online CelesTrak conversion stub is pending).
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/data/sw_celestrack_1957.swbin")
-    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/data/sw_celestrack_1957.swbin"
-        DESTINATION data)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/data/drivers/sw_celestrack_1957.swbin")
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/data/drivers/sw_celestrack_1957.swbin"
+        DESTINATION data/drivers)
 endif()
 
 # Python binding
@@ -455,39 +454,4 @@ include(CPack)
 if(ROPE_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests/cpp)
-endif()
-
-# ---------------------------------------------------------------------------
-# Legacy build (opt-in with -DROPE_BUILD_LEGACY=ON)
-# ---------------------------------------------------------------------------
-if(ROPE_BUILD_LEGACY)
-    if(NOT ORT_INC OR NOT ORT_LIB)
-        message(FATAL_ERROR "ROPE_BUILD_LEGACY requires ONNX Runtime")
-    endif()
-    add_library(rope_legacy STATIC
-        legacy/src/rope.cpp
-        legacy/src/interpolator.cpp
-    )
-    target_include_directories(rope_legacy
-        PUBLIC legacy/include
-               ${ORT_INC}
-    )
-    target_link_libraries(rope_legacy PUBLIC ${ORT_LIB})
-    if(Torch_FOUND)
-        target_link_libraries(rope_legacy PUBLIC ${TORCH_LIBRARIES})
-        target_include_directories(rope_legacy PUBLIC ${TORCH_INCLUDE_DIRS})
-        target_compile_definitions(rope_legacy PUBLIC ROPE_USE_LIBTORCH)
-    endif()
-    if(OpenMP_CXX_FOUND)
-        target_link_libraries(rope_legacy PUBLIC OpenMP::OpenMP_CXX)
-        target_compile_definitions(rope_legacy PUBLIC ROPE_USE_OPENMP)
-    endif()
-
-    add_executable(rope_demo legacy/src/driver.cpp)
-    target_link_libraries(rope_demo PRIVATE rope_legacy)
-    if(ORT_LIB_DIR)
-        set_target_properties(rope_demo PROPERTIES
-            BUILD_RPATH "${ORT_LIB_DIR};${ORT_LIB_DIR}/dnnl/install/lib"
-        )
-    endif()
 endif()

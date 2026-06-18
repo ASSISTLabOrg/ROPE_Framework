@@ -200,3 +200,36 @@ def test_idle_timeout_shuts_down_server(tmp_path):
         timeout=5,
     )
     assert probe.returncode != 0, "server should have shut down due to idle timeout"
+
+
+# ---------------------------------------------------------------------------
+# Pipeline load failure — server stays alive and serves other requests
+# ---------------------------------------------------------------------------
+
+def test_bad_exported_dir_forecast_fails_but_server_stays_alive(tmp_path):
+    # exported_dir has no model artifacts at all, so the pipeline fails to
+    # load at server startup. Per server.cpp, that failure is logged and
+    # swallowed — the server keeps running and answers other requests;
+    # only "forecast" should report an error.
+    sock      = str(tmp_path / "rope_bad_dir.sock")
+    conf      = tmp_path / "rope_bad_dir.conf"
+    empty_dir = tmp_path / "empty_models"
+    empty_dir.mkdir()
+    conf.write_text(
+        f"[paths]\n"
+        f"exported_dir = {empty_dir}\n"
+        f"[server]\n"
+        f"idle_timeout_seconds = 30\n"
+    )
+
+    forecast = _rope(
+        "--socket", sock, "forecast",
+        "--start", FORECAST_START, "--horizon", str(FORECAST_HORIZON),
+        "--config", str(conf),
+    )
+    assert forecast.returncode != 0
+    assert "pipeline" in forecast.stderr.lower()
+
+    # The server itself must still be up — exit should succeed cleanly.
+    exit_result = _rope("--socket", sock, "exit", timeout=10)
+    assert exit_result.returncode == 0

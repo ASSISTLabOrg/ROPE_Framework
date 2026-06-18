@@ -9,13 +9,13 @@
 
 # Directory produced by export_models.py (contains *.onnx, *.bin,
 # driver_config.json, ic_config.json, ic_table.icbin).
-exported_dir = ../models/exported
+exported_dir = ../data/models/tiegcm-lstm-v1
 
 # Explicit driver data file (.swbin or .csv).  When set, bypasses the
 # cache manager entirely — no network access or staleness check.
 # Remove this line (or leave empty) once the online conversion is
 # implemented and the cache manager can supply fresh data automatically.
-driver_path = ../data/sw_celestrack_1957.swbin
+driver_path = ../data/drivers/sw_celestrack_1957.swbin
 
 
 # ---------------------------------------------------------------------------

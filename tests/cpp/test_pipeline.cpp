@@ -69,3 +69,14 @@ TEST_CASE("Pipeline: uncertainty disabled sets it to zero") {
     for (float d : grid.density)
         CHECK(d > 0.0f);
 }
+
+TEST_CASE("Pipeline: run() is deterministic - repeated calls produce identical output") {
+    auto pipe  = rope::forecast::load(make_test_config());
+    auto grid1 = pipe->run(TEST_START, TEST_HORIZON);
+    auto grid2 = pipe->run(TEST_START, TEST_HORIZON);
+
+    CHECK(grid1.H == grid2.H);
+    CHECK(grid1.times == grid2.times);
+    CHECK(grid1.density == grid2.density);
+    CHECK(grid1.uncertainty == grid2.uncertainty);
+}
