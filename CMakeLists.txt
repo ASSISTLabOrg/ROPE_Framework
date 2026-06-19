@@ -3,9 +3,15 @@ project(ROPE VERSION 0.2.0 LANGUAGES CXX C)
 
 # Allow CI to inject the version from the git tag: -DROPE_RELEASE_VERSION=x.y.z
 # (Cannot use ROPE_VERSION — project() sets that to the hardcoded version above.)
-if(ROPE_RELEASE_VERSION)
-    string(REGEX REPLACE "^v" "" ROPE_RELEASE_VERSION "${ROPE_RELEASE_VERSION}")
-    string(STRIP "${ROPE_RELEASE_VERSION}" ROPE_RELEASE_VERSION)
+#
+# Strip before checking emptiness, and compare with STREQUAL rather than a
+# bare if(ROPE_RELEASE_VERSION): CMake's if() treats the literal string "0"
+# as false, so a bare check would silently skip validation (and any stray
+# whitespace from shell quoting would make an otherwise-empty value look
+# non-empty to that same bare check).
+string(REGEX REPLACE "^v" "" ROPE_RELEASE_VERSION "${ROPE_RELEASE_VERSION}")
+string(STRIP "${ROPE_RELEASE_VERSION}" ROPE_RELEASE_VERSION)
+if(NOT ROPE_RELEASE_VERSION STREQUAL "")
     if(NOT ROPE_RELEASE_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+$")
         message(FATAL_ERROR "ROPE_RELEASE_VERSION must be X.Y.Z or vX.Y.Z (got '${ROPE_RELEASE_VERSION}')")
     endif()

@@ -83,18 +83,15 @@ jobs:
       cache_key: deps-windows-x64-cuda12-ort1.25.0
 
   # ── Windows CPU ───────────────────────────────────────────────────────────
-  # Skipped on feature branches.
+  # Runs on every push/PR — full test suite, same as Linux CPU.
   build-windows:
     name: Windows (x64, cpu)
-    if: >-
-      github.ref == 'refs/heads/main' ||
-      github.event_name == 'workflow_dispatch'
     uses: ./.github/workflows/_build-windows.yml
     with:
       hardware: cpu
       use_libtorch: true
-      build_tests: ${{ inputs.test_all_platforms == true }}
-      run_dotnet_tests: false
+      build_tests: true
+      run_dotnet_tests: true
       save_cache: ${{ github.ref == 'refs/heads/main' }}
       package_suffix: windows-x64-cpu
       artifact_name: rope-windows-x64-cpu

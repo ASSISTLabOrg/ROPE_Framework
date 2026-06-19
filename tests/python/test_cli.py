@@ -211,7 +211,13 @@ def test_bad_exported_dir_forecast_fails_but_server_stays_alive(tmp_path):
     # load at server startup. Per server.cpp, that failure is logged and
     # swallowed — the server keeps running and answers other requests;
     # only "forecast" should report an error.
-    sock      = str(tmp_path / "rope_bad_dir.sock")
+    #
+    # Socket path must stay short (AF_UNIX sun_path limit, 104 chars on
+    # macOS) — pytest's tmp_path embeds the full test name and can exceed
+    # that. Use tempfile.gettempdir() directly, same as the idle-timeout
+    # test above.
+    import tempfile
+    sock      = str(Path(tempfile.gettempdir()) / f"rope_baddir_{os.getpid()}.sock")
     conf      = tmp_path / "rope_bad_dir.conf"
     empty_dir = tmp_path / "empty_models"
     empty_dir.mkdir()
