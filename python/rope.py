@@ -53,7 +53,7 @@ class Rope:
 
     Parameters
     ----------
-    lib_path    : Path to librope.so / librope.dylib / rope.dll.
+    lib_path    : Path to librope.so / librope.dylib / librope.dll.
                   Defaults to lib/librope.so relative to the archive root.
     exe_path    : Path to the rope CLI executable.
                   Defaults to bin/rope relative to the archive root.
@@ -79,7 +79,7 @@ class Rope:
             candidates = [
                 root / "lib" / "librope.so",
                 root / "lib" / "librope.dylib",
-                root / "bin" / "rope.dll",
+                root / "bin" / "librope.dll",
                 root / "build" / "librope.so",
             ]
             for c in candidates:

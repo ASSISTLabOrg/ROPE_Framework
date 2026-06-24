@@ -5,7 +5,7 @@
  * then exercises the librope P/Invoke path for single and batch queries.
  *
  * Required environment variables (injected by CI; skipped when absent):
- *   ROPE_LIB          path to librope.so / librope.dylib / rope.dll
+ *   ROPE_LIB          path to librope.so / librope.dylib / librope.dll
  *   ROPE_EXE          path to the rope CLI binary
  *   ROPE_FIXTURE_DIR  path to tests/fixtures/
  *

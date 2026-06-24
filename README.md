@@ -216,7 +216,7 @@ Errors are raised as `RopeError(RuntimeError)` with a `.code` attribute matching
 
 ## C API
 
-For use from C or languages with a C FFI, `include/rope/capi/rope.h` exposes a stable C-compatible ABI. The shared library is `lib/librope.so` (Linux), `lib/librope.dylib` (macOS), or `bin/rope.dll` (Windows).
+For use from C or languages with a C FFI, `include/rope/capi/rope.h` exposes a stable C-compatible ABI. The shared library is `lib/librope.so` (Linux), `lib/librope.dylib` (macOS), or `bin/librope.dll` (Windows).
 
 The C API handles interpolation only. The server lifecycle (starting a forecast, shutting down) is managed through the `rope` CLI as described above.
 

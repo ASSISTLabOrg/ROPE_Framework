@@ -1,0 +1,49 @@
+<Project>
+  <!--
+    Copies the native binaries bundled under build/native/ next to the
+    consuming project's own build/publish output, on every build.
+
+    This is intentionally a plain MSBuild Copy task with fully explicit,
+    self-controlled paths rather than NuGet's contentFiles/runtimes
+    conventions: contentFiles' copyToOutput metadata is unreliable across
+    SDK versions, and runtimes/<rid>/native/ never copies for .NET
+    Framework targets at all. build/<PackageId>.targets auto-import is a
+    much older, more fundamental NuGet mechanism (predates PackageReference
+    — it was designed for packages.config) and isn't tied to either of
+    those limitations, so this works the same way for every target
+    framework and every project style.
+  -->
+  <Target Name="RopeFramework_CopyNativeFiles" AfterTargets="Build;Publish">
+    <ItemGroup Condition="'$(OS)' == 'Windows_NT'">
+      <_RopeNativeFile Include="$(MSBuildThisFileDirectory)native/*.dll" />
+      <_RopeNativeFile Include="$(MSBuildThisFileDirectory)native/*.exe" />
+    </ItemGroup>
+    <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
+      <_RopeNativeFile Include="$(MSBuildThisFileDirectory)native/*.so*" />
+      <_RopeNativeFile Include="$(MSBuildThisFileDirectory)native/*.dylib" />
+      <!--
+        rope.bin/rope-osx.bin are literal (non-wildcard) paths, unlike the
+        globs above — Copy fails loudly if a literal SourceFiles entry
+        doesn't exist, so each needs its own Exists() guard. A package
+        built from only one platform's artifacts (e.g. this repo's
+        Linux-only CI smoke test) won't have both; whichever exists gets
+        copied, and ResolveExePath only ever looks for the one matching
+        the OS actually running, so the other — when present — just sits
+        unused.
+      -->
+      <_RopeNativeFile Include="$(MSBuildThisFileDirectory)native/rope.bin"
+                        Condition="Exists('$(MSBuildThisFileDirectory)native/rope.bin')" />
+      <_RopeNativeFile Include="$(MSBuildThisFileDirectory)native/rope-osx.bin"
+                        Condition="Exists('$(MSBuildThisFileDirectory)native/rope-osx.bin')" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(_RopeNativeFile)"
+          DestinationFolder="$(TargetDir)"
+          SkipUnchangedFiles="true"
+          Condition="'$(TargetDir)' != ''" />
+    <Copy SourceFiles="@(_RopeNativeFile)"
+          DestinationFolder="$(PublishDir)"
+          SkipUnchangedFiles="true"
+          Condition="'$(PublishDir)' != ''" />
+  </Target>
+</Project>

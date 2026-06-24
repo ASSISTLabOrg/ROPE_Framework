@@ -242,6 +242,11 @@ endif()
 add_library(rope SHARED
     src/capi/rope.cpp
 )
+# Force the "lib" prefix on every platform (CMake's Windows default omits it,
+# which would make the output "rope.dll" — colliding case-insensitively with
+# the managed "Rope.dll" wrapper assembly shipped alongside it in the NuGet
+# package). No-op on Linux/macOS, where "lib" is already the default.
+set_target_properties(rope PROPERTIES PREFIX "lib")
 target_compile_definitions(rope PRIVATE ROPE_BUILDING_SHARED)
 target_link_libraries(rope
     PRIVATE rope_client
@@ -272,10 +277,12 @@ target_link_libraries(rope_exe
 if(TARGET rope_forecast)
     target_link_libraries(rope_exe PRIVATE rope_forecast)
 endif()
+# Search both the standard tarball layout (bin/ + ../lib/) and a flat layout
+# (everything in one directory, as used by the NuGet contentFiles package).
 if(APPLE)
-    set(_exe_install_rpath "@executable_path/../lib;@loader_path/../lib")
+    set(_exe_install_rpath "@executable_path;@executable_path/../lib;@loader_path;@loader_path/../lib")
 else()
-    set(_exe_install_rpath "$ORIGIN/../lib")
+    set(_exe_install_rpath "$ORIGIN;$ORIGIN/../lib")
 endif()
 get_filename_component(ORT_LIB_DIR "${ORT_LIB}" DIRECTORY)
 if(ORT_LIB_DIR)

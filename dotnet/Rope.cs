@@ -132,7 +132,7 @@ namespace RopeFramework
         // -------------------------------------------------------------------------
 
         /// <param name="libPath">
-        ///   Path to librope.so / librope.dylib / rope.dll.
+        ///   Path to librope.so / librope.dylib / librope.dll.
         ///   Defaults to a file alongside Rope.dll, then lib/librope.* relative
         ///   to the package root.
         /// </param>
@@ -429,8 +429,8 @@ namespace RopeFramework
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 candidates = new string[]
                 {
-                    Path.Combine(asmDir, "rope.dll"),
-                    Path.Combine(root,   "bin", "rope.dll"),
+                    Path.Combine(asmDir, "librope.dll"),
+                    Path.Combine(root,   "bin", "librope.dll"),
                 };
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
                 candidates = new string[]
@@ -464,10 +464,26 @@ namespace RopeFramework
                     Path.Combine(asmDir, "rope.exe"),
                     Path.Combine(root,   "bin", "rope.exe"),
                 };
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                candidates = new string[]
+                {
+                    Path.Combine(asmDir, "rope"),
+                    // NuGet package — staged/packed as "rope-osx.bin" (see
+                    // Rope.csproj): dotnet pack mishandles an extensionless
+                    // source file's PackagePath, and macOS's and Linux's CLI
+                    // binaries share the bare name "rope", so each needs a
+                    // distinct name to coexist in the same package.
+                    Path.Combine(asmDir, "rope-osx.bin"),
+                    Path.Combine(root,   "bin",   "rope"),
+                    Path.Combine(root,   "build", "rope"),
+                };
             else
                 candidates = new string[]
                 {
                     Path.Combine(asmDir, "rope"),
+                    // NuGet package — staged/packed as "rope.bin"; see the
+                    // OSX branch above for why.
+                    Path.Combine(asmDir, "rope.bin"),
                     Path.Combine(root,   "bin",   "rope"),
                     Path.Combine(root,   "build", "rope"),
                 };

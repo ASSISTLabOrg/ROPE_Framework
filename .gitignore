@@ -1,6 +1,7 @@
 build/
 data/
-models/
 __pycache__
-*.pkl.
+*.pkl
+*.csv
 .artifacts/
+.pytest_cache
