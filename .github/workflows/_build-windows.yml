@@ -128,8 +128,7 @@ jobs:
 
           dotnet restore tests/dotnet/PackSmokeConsumer/PackSmokeConsumer.csproj `
             -p:RopeSmokeTestVersion=0.0.0-packsmoke `
-            --source "$env:GITHUB_WORKSPACE\nupkg" `
-            --source https://api.nuget.org/v3/index.json
+            "-p:RestoreAdditionalProjectSources=$env:GITHUB_WORKSPACE\nupkg"
 
           dotnet build tests/dotnet/PackSmokeConsumer/PackSmokeConsumer.csproj -c Release --no-restore
 

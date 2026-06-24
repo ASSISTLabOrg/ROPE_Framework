@@ -528,17 +528,38 @@ namespace RopeFramework
         [DllImport("kernel32")]
         private static extern bool FreeLibrary(IntPtr hModule);
 
-        // Unix (Linux and macOS both expose dl* via libdl)
+        // Unix
         [DllImport("libdl", EntryPoint = "dlopen")]
-        private static extern IntPtr dlopen(string path, int flags);
-
+        private static extern IntPtr dlopen_libdl(string path, int flags);
         [DllImport("libdl", EntryPoint = "dlsym")]
-        private static extern IntPtr dlsym(IntPtr handle, string symbol);
-
+        private static extern IntPtr dlsym_libdl(IntPtr handle, string symbol);
         [DllImport("libdl", EntryPoint = "dlclose")]
-        private static extern int dlclose(IntPtr handle);
+        private static extern int dlclose_libdl(IntPtr handle);
+
+        [DllImport("libdl.so.2", EntryPoint = "dlopen")]
+        private static extern IntPtr dlopen_libdl2(string path, int flags);
+        [DllImport("libdl.so.2", EntryPoint = "dlsym")]
+        private static extern IntPtr dlsym_libdl2(IntPtr handle, string symbol);
+        [DllImport("libdl.so.2", EntryPoint = "dlclose")]
+        private static extern int dlclose_libdl2(IntPtr handle);
+
+        [DllImport("libc", EntryPoint = "dlopen")]
+        private static extern IntPtr dlopen_libc(string path, int flags);
+        [DllImport("libc", EntryPoint = "dlsym")]
+        private static extern IntPtr dlsym_libc(IntPtr handle, string symbol);
+        [DllImport("libc", EntryPoint = "dlclose")]
+        private static extern int dlclose_libc(IntPtr handle);
 
         private const int RTLD_NOW = 2;
+
+        private static readonly (Func<string, int, IntPtr> Open, Func<IntPtr, string, IntPtr> Sym, Func<IntPtr, int> Close)[] s_dlCandidates =
+        {
+            (dlopen_libdl,  dlsym_libdl,  dlclose_libdl),
+            (dlopen_libdl2, dlsym_libdl2, dlclose_libdl2),
+            (dlopen_libc,   dlsym_libc,   dlclose_libc),
+        };
+
+        private static int s_dlIndex = -1;
 
         public static IntPtr Load(string path)
         {
@@ -550,20 +571,39 @@ namespace RopeFramework
                         "Failed to load '" + path + "': error " + Marshal.GetLastWin32Error());
                 return h;
             }
-            else
+
+            if (s_dlIndex >= 0)
             {
-                IntPtr h = dlopen(path, RTLD_NOW);
+                IntPtr h = s_dlCandidates[s_dlIndex].Open(path, RTLD_NOW);
                 if (h == IntPtr.Zero)
                     throw new DllNotFoundException("Failed to load '" + path + "'");
                 return h;
             }
+
+            for (int i = 0; i < s_dlCandidates.Length; i++)
+            {
+                IntPtr h;
+                try
+                {
+                    h = s_dlCandidates[i].Open(path, RTLD_NOW);
+                }
+                catch (DllNotFoundException)
+                {
+                    continue;
+                }
+                s_dlIndex = i;
+                if (h == IntPtr.Zero)
+                    throw new DllNotFoundException("Failed to load '" + path + "'");
+                return h;
+            }
+            throw new DllNotFoundException("dlopen unavailable via libdl, libdl.so.2, or libc");
         }
 
         public static IntPtr GetExport(IntPtr lib, string symbol)
         {
             IntPtr ptr = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
                 ? GetProcAddress(lib, symbol)
-                : dlsym(lib, symbol);
+                : s_dlCandidates[s_dlIndex].Sym(lib, symbol);
             if (ptr == IntPtr.Zero)
                 throw new EntryPointNotFoundException("Symbol '" + symbol + "' not found");
             return ptr;
@@ -573,7 +613,7 @@ namespace RopeFramework
         {
             ptr = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
                 ? GetProcAddress(lib, symbol)
-                : dlsym(lib, symbol);
+                : s_dlCandidates[s_dlIndex].Sym(lib, symbol);
             return ptr != IntPtr.Zero;
         }
 
@@ -582,7 +622,7 @@ namespace RopeFramework
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 FreeLibrary(lib);
             else
-                dlclose(lib);
+                s_dlCandidates[s_dlIndex].Close(lib);
         }
     }
 }

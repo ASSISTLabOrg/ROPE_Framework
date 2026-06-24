@@ -54,14 +54,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # act doesn't inject Node.js into custom job containers (unlike GitHub's
-      # hosted runners), so JS actions like actions/cache fail without this.
-      - name: Install Node.js (act only)
-        if: ${{ env.ACT }}
-        run: |
-          apt-get update
-          apt-get install -y nodejs
-
       - name: Install build tools
         run: |
           apt-get update
@@ -103,19 +95,20 @@ jobs:
 
       - name: Test (Python)
         if: ${{ inputs.build_tests }}
-        run: pytest tests/python/ -v
-        env:
-          ROPE_EXE:         ${{ github.workspace }}/build/rope
-          ROPE_FIXTURE_DIR: ${{ github.workspace }}/tests/fixtures
+        run: |
+          export ROPE_EXE="$(pwd)/build/rope"
+          export ROPE_FIXTURE_DIR="$(pwd)/tests/fixtures"
+          pytest tests/python/ -v
 
       - name: Test (C#)
         if: ${{ inputs.run_dotnet_tests }}
-        run: dotnet test tests/dotnet/RopeTests.csproj --logger "console;verbosity=normal"
+        run: |
+          export ROPE_LIB="$(pwd)/build/librope.so"
+          export ROPE_EXE="$(pwd)/build/rope"
+          export ROPE_FIXTURE_DIR="$(pwd)/tests/fixtures"
+          dotnet test tests/dotnet/RopeTests.csproj --logger "console;verbosity=normal"
         env:
           DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "1"
-          ROPE_LIB:         ${{ github.workspace }}/build/librope.so
-          ROPE_EXE:         ${{ github.workspace }}/build/rope
-          ROPE_FIXTURE_DIR: ${{ github.workspace }}/tests/fixtures
 
       - name: Pack (C#)
         if: ${{ inputs.dotnet_pack_smoke }}
@@ -135,16 +128,15 @@ jobs:
         run: |
           cat > /tmp/pack-smoke-rope.conf <<CONF
           [paths]
-          exported_dir = ${{ github.workspace }}/tests/fixtures/test_models
-          driver_path  = ${{ github.workspace }}/tests/fixtures/test_models/sw_test.swbin
+          exported_dir = $(pwd)/tests/fixtures/test_models
+          driver_path  = $(pwd)/tests/fixtures/test_models/sw_test.swbin
           [server]
           idle_timeout_seconds = 30
           CONF
 
           dotnet restore tests/dotnet/PackSmokeConsumer/PackSmokeConsumer.csproj \
             -p:RopeSmokeTestVersion=0.0.0-packsmoke \
-            --source "${{ github.workspace }}/nupkg" \
-            --source https://api.nuget.org/v3/index.json
+            -p:RestoreAdditionalProjectSources="$(pwd)/nupkg"
 
           dotnet build tests/dotnet/PackSmokeConsumer/PackSmokeConsumer.csproj -c Release --no-restore
 

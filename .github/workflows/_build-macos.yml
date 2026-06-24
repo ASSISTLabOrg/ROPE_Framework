@@ -105,14 +105,6 @@ jobs:
           ROPE_EXE:         ${{ github.workspace }}/build/rope
           ROPE_FIXTURE_DIR: ${{ github.workspace }}/tests/fixtures
 
-      # Smoke check: catches Rope.csproj/packaging regressions on every push.
-      # Stages from an actual `cmake --install` prefix, not the raw build/
-      # tree, so DLL/dylib resolution matches what a real downloaded
-      # package ships (see _build-linux.yml for the longer rationale).
-      # macOS's CLI binary is named "rope" with no extension, same as
-      # Linux's, but they aren't interchangeable — renamed to "rope-osx.bin"
-      # to coexist with Linux's "rope.bin" in a merged release nupkg (see
-      # Rope.csproj / Rope.cs's ResolveExePath OSX branch).
       - name: Pack (C#)
         if: ${{ inputs.dotnet_pack_smoke }}
         run: |
@@ -124,10 +116,6 @@ jobs:
             -p:Version=0.0.0-packsmoke \
             -p:RopeNativeDir=/tmp/pack-smoke-native
 
-      # Consumes the just-packed nupkg exactly like a real end user would
-      # (PackageReference, no libPath/exePath). Only builds (doesn't run)
-      # the net48 target — there's no .NET Framework runtime on macOS to
-      # execute it with, same constraint as the Linux smoke test.
       - name: Pack smoke test (consume)
         if: ${{ inputs.dotnet_pack_smoke }}
         run: |
@@ -141,8 +129,7 @@ jobs:
 
           dotnet restore tests/dotnet/PackSmokeConsumer/PackSmokeConsumer.csproj \
             -p:RopeSmokeTestVersion=0.0.0-packsmoke \
-            --source "${{ github.workspace }}/nupkg" \
-            --source https://api.nuget.org/v3/index.json
+            -p:RestoreAdditionalProjectSources="${{ github.workspace }}/nupkg"
 
           dotnet build tests/dotnet/PackSmokeConsumer/PackSmokeConsumer.csproj -c Release --no-restore
 

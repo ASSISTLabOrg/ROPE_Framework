@@ -157,3 +157,53 @@ jobs:
       package_suffix: windows-x64-cpu
       artifact_name: rope-windows-x64-cpu
       cache_key: deps-windows-x64-cpu-ort1.25.0-torch2.7.0
+
+  # ── Pack .NET (dev artifact, develop only) ──────────────────────────────────
+  pack-dotnet:
+    name: Pack .NET (NuGet, dev)
+    needs: [build-linux, build-macos-arm64, build-windows]
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: rope-linux-x86_64-cpu
+          path: artifacts/linux
+      - uses: actions/download-artifact@v4
+        with:
+          name: rope-windows-x64-cpu
+          path: artifacts/windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: rope-macos-arm64-cpu
+          path: artifacts/macos
+
+      - name: Extract native binaries
+        run: |
+          mkdir -p native
+          tar -xzf artifacts/linux/rope_framework-*.tar.gz -C artifacts/linux
+          unzip -q artifacts/windows/rope_framework-*.zip -d artifacts/windows
+          tar -xzf artifacts/macos/rope_framework-*.tar.gz -C artifacts/macos
+          find artifacts/linux   -path '*/lib/*.so*'           -exec cp {} native/ \;
+          find artifacts/macos   -path '*/lib/*.dylib'         -exec cp {} native/ \;
+          find artifacts/linux   -path '*/bin/rope'            -exec cp {} native/rope.bin \;
+          find artifacts/macos   -path '*/bin/rope'            -exec cp {} native/rope-osx.bin \;
+          find artifacts/windows -path '*/bin/*' \( -iname '*.dll' -o -iname '*.exe' \) -exec cp {} native/ \;
+          ls native/
+
+      - name: Pack
+        run: |
+          dotnet pack dotnet/Rope.csproj -c Release -o nupkg \
+            -p:RopeNativeDir="${{ github.workspace }}/native" \
+            -p:Version=0.0.0-dev.${{ github.run_number }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rope-dotnet-nupkg
+          path: nupkg/*.nupkg
+          retention-days: 1
