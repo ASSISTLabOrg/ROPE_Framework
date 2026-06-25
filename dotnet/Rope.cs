@@ -420,9 +420,6 @@ namespace RopeFramework
             return (dt.ToUniversalTime() - epoch).TotalSeconds;
         }
 
-        // Resolves the native library, checking next to Rope.dll first (the
-        // layout produced by the NuGet contentFiles package), then falling
-        // back to the bin/lib layout of the zip/tarball release package.
         private static string ResolveLibPath(string root, string asmDir)
         {
             string[] candidates;
@@ -453,8 +450,6 @@ namespace RopeFramework
                 "librope not found; pass libPath explicitly or check your package layout");
         }
 
-        // Resolves the rope CLI executable using the same search order as
-        // ResolveLibPath.
         private static string ResolveExePath(string root, string asmDir)
         {
             string[] candidates;
@@ -468,11 +463,6 @@ namespace RopeFramework
                 candidates = new string[]
                 {
                     Path.Combine(asmDir, "rope"),
-                    // NuGet package — staged/packed as "rope-osx.bin" (see
-                    // Rope.csproj): dotnet pack mishandles an extensionless
-                    // source file's PackagePath, and macOS's and Linux's CLI
-                    // binaries share the bare name "rope", so each needs a
-                    // distinct name to coexist in the same package.
                     Path.Combine(asmDir, "rope-osx.bin"),
                     Path.Combine(root,   "bin",   "rope"),
                     Path.Combine(root,   "build", "rope"),
@@ -481,8 +471,6 @@ namespace RopeFramework
                 candidates = new string[]
                 {
                     Path.Combine(asmDir, "rope"),
-                    // NuGet package — staged/packed as "rope.bin"; see the
-                    // OSX branch above for why.
                     Path.Combine(asmDir, "rope.bin"),
                     Path.Combine(root,   "bin",   "rope"),
                     Path.Combine(root,   "build", "rope"),
@@ -494,8 +482,6 @@ namespace RopeFramework
             return null;
         }
 
-        // Extracts a string value from flat JSON without taking a System.Text.Json
-        // or Newtonsoft dependency. The forecast response only has two string fields.
         private static string ExtractJsonString(string json, string key)
         {
             string search = "\"" + key + "\"";
@@ -510,11 +496,6 @@ namespace RopeFramework
             return json.Substring(q1 + 1, q2 - q1 - 1);
         }
     }
-
-    // -------------------------------------------------------------------------
-    // NativeLib — replaces System.Runtime.InteropServices.NativeLibrary,
-    // which is .NET Core 3.0+ only and absent from .NET Framework 4.8.
-    // -------------------------------------------------------------------------
 
     internal static class NativeLib
     {

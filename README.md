@@ -306,21 +306,27 @@ cl /I include example.c /link /LIBPATH:bin rope.lib /out:example.exe
 
 ## C# (.NET)
 
-A C# binding is included in the `dotnet/` directory. It targets .NET 8 and works on all supported platforms. Copy `dotnet/Rope.cs` and `dotnet/Rope.csproj` into your project, or reference the project directly.
+A C# binding is included in the `dotnet/` directory and published as the `RopeFramework` NuGet package. It targets .NET Framework 4.8 and .NET 8, and works on all supported platforms.
 
 The binding uses P/Invoke to call `librope` for fast in-process interpolation, and `Process.Start` to invoke the `rope` CLI for forecast and server lifecycle management.
 
 ### Setup
 
-Add the project reference to your `.csproj`:
+Download `RopeFramework.<version>.nupkg` from the GitHub Releases page, then install it from that local folder (works for both PackageReference and packages.config projects):
+
+```
+dotnet add package RopeFramework --source /path/to/folder
+```
+
+Native binaries are bundled in the package and copied next to your build output automatically — no extra setup needed.
+
+Alternatively, reference the project directly or copy `Rope.cs` into your project:
 
 ```xml
 <ItemGroup>
   <ProjectReference Include="path/to/dotnet/Rope.csproj" />
 </ItemGroup>
 ```
-
-Or copy `Rope.cs` into your project and ensure `AllowUnsafeBlocks` is set:
 
 ```xml
 <PropertyGroup>

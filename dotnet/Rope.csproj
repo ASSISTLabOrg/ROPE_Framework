@@ -9,7 +9,6 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <!-- NuGet package metadata -->
     <PackageId>RopeFramework</PackageId>
     <Version>0.2.0</Version>
     <Authors>Violet Player</Authors>
@@ -21,42 +20,6 @@
     <None Include="../LICENSE" Pack="true" PackagePath="" />
   </ItemGroup>
 
-  <!--
-    Native binaries (librope.dll / rope.exe / librope.so / librope.dylib /
-    rope.bin) plus their runtime dependencies (ONNX Runtime, LibTorch) are
-    built by CMake, not by this project, so they aren't present during a
-    plain `dotnet build`. Point RopeNativeDir at a directory containing them
-    (e.g. the CMake install prefix's bin/ or build/ directory) to bundle
-    whichever are found into the package.
-
-      dotnet pack -p:RopeNativeDir=/path/to/install/bin
-
-    Building without RopeNativeDir set still produces a valid package
-    containing just the managed Rope.dll.
-
-    Packed under build/native/ and copied into the consuming project's own
-    build/publish output by build/RopeFramework.targets (see that file) —
-    deliberately not using NuGet's contentFiles or runtimes/<rid>/native/
-    conventions: contentFiles' copyToOutput metadata doesn't make it into
-    the nuspec on current SDKs (confirmed by direct testing — files never
-    copy, on any consumer), and runtimes/<rid>/native/ never copies for
-    .NET Framework targets regardless of project style. build/<id>.targets
-    auto-import is a much older, more fundamental NuGet mechanism (predates
-    PackageReference — it was designed for packages.config) and isn't tied
-    to either limitation.
-
-    The Linux and macOS CLI binaries are both named "rope" with no file
-    extension by Unix convention — but they aren't interchangeable, and
-    dotnet pack has a quirk where a *source* file with no extension always
-    gets its PackagePath treated as a destination folder (the source's own
-    bare name is appended again, e.g. ".../rope/rope" — this reproduces
-    even with a fully literal, non-wildcard PackagePath, and even if the
-    destination name has an extension; it only goes away once the source
-    filename itself carries an extension matching the destination exactly).
-    So we expect them staged as "rope.bin" (Linux) and "rope-osx.bin"
-    (macOS) in RopeNativeDir (release.yml renames them when assembling that
-    directory) and Rope.cs's ResolveExePath looks for those names too.
-  -->
   <PropertyGroup>
     <RopeNativeDir Condition="'$(RopeNativeDir)' == ''">$(MSBuildThisFileDirectory)../build</RopeNativeDir>
   </PropertyGroup>
@@ -68,13 +31,6 @@
     <_RopeNativeFile Include="$(RopeNativeDir)/librope.dylib" Condition="Exists('$(RopeNativeDir)/librope.dylib')" />
     <_RopeNativeFile Include="$(RopeNativeDir)/rope.bin"      Condition="Exists('$(RopeNativeDir)/rope.bin')" />
     <_RopeNativeFile Include="$(RopeNativeDir)/rope-osx.bin"  Condition="Exists('$(RopeNativeDir)/rope-osx.bin')" />
-
-    <!--
-      Runtime dependencies (ONNX Runtime, LibTorch, etc.) — a large,
-      version-dependent set matched by extension only. The OS loader
-      resolves these by filename automatically once they sit next to the
-      binaries above, so this project doesn't need to know their exact names.
-    -->
     <_RopeNativeFile Include="$(RopeNativeDir)/*.dll"
                       Exclude="$(RopeNativeDir)/librope.dll;$(RopeNativeDir)/rope.exe" />
     <_RopeNativeFile Include="$(RopeNativeDir)/*.so;$(RopeNativeDir)/*.so.*"
@@ -87,7 +43,8 @@
           PackagePath="build/native/%(Filename)%(Extension)"
           Visible="false" />
 
-    <None Include="RopeFramework.targets" Pack="true" PackagePath="build/RopeFramework.targets" Visible="false" />
+    <None Include="RopeFramework.targets" Pack="true" PackagePath="build/net48/RopeFramework.targets" Visible="false" />
+    <None Include="RopeFramework.targets" Pack="true" PackagePath="build/net8.0/RopeFramework.targets" Visible="false" />
   </ItemGroup>
 
 </Project>
