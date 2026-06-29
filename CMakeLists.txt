@@ -420,7 +420,9 @@ endif()
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/python/" DESTINATION python)
 
 # .NET binding
-install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dotnet/" DESTINATION dotnet)
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dotnet/" DESTINATION dotnet
+    PATTERN "bin"    EXCLUDE
+    PATTERN "obj"    EXCLUDE)
 
 # Python demo
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/demo/pyproject.toml")

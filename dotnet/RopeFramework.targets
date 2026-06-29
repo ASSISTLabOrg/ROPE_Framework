@@ -1,7 +1,9 @@
 <Project>
   <Target Name="RopeFramework_CopyNativeFiles" AfterTargets="Build;Publish">
+    <!-- Exclude Rope.dll itself — this must never overwrite the consumer's own managed reference. -->
     <ItemGroup Condition="'$(OS)' == 'Windows_NT'">
-      <_RopeNativeFile Include="$(MSBuildThisFileDirectory)../native/*.dll" />
+      <_RopeNativeFile Include="$(MSBuildThisFileDirectory)../native/*.dll"
+                        Exclude="$(MSBuildThisFileDirectory)../native/Rope.dll" />
       <_RopeNativeFile Include="$(MSBuildThisFileDirectory)../native/*.exe" />
     </ItemGroup>
     <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
